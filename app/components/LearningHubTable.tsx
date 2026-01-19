@@ -4,7 +4,6 @@ import { useState } from "react";
 import { LearningCard } from "../types";
 import LearningCardEditModal from "./LearningCardEditModal";
 import { motion } from "framer-motion";
-import Image from "next/image";
 
 interface LearningHubTableProps {
   cards: LearningCard[];
@@ -104,7 +103,7 @@ export default function LearningHubTable({
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64 font-[Kantumruy_Pro]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E4123]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0A817F]"></div>
       </div>
     );
   }
@@ -156,7 +155,7 @@ export default function LearningHubTable({
                 className="
                   inline-flex items-center justify-center gap-2 
                   px-4 py-2.5 
-                  bg-[#0E4123] 
+                  bg-[#0A817F] 
                   text-white font-medium 
                   rounded-lg 
                   hover:bg-[#0A2F1C] 
@@ -206,8 +205,8 @@ export default function LearningHubTable({
                       pl-10 pr-4 py-2.5 
                       border border-[#D1D5DB] 
                       rounded-lg 
-                      focus:border-[#0E4123] 
-                      focus:ring-2 focus:ring-[#0E4123]/20 
+                      focus:border-[#0A817F] 
+                      focus:ring-2 focus:ring-[#0A817F]/20 
                       w-full sm:w-64
                       text-[13px] sm:text-[14px]
                     "
@@ -221,8 +220,8 @@ export default function LearningHubTable({
                     px-4 py-2.5 
                     border border-[#D1D5DB] 
                     rounded-lg 
-                    focus:border-[#0E4123] 
-                    focus:ring-2 focus:ring-[#0E4123]/20 
+                    focus:border-[#0A817F] 
+                    focus:ring-2 focus:ring-[#0A817F]/20 
                     text-[13px] sm:text-[14px]
                   "
                 >
@@ -288,7 +287,7 @@ export default function LearningHubTable({
                     border border-transparent 
                     text-[13px] sm:text-[14px] font-medium 
                     rounded-lg shadow-sm 
-                    text-white bg-[#0E4123] 
+                    text-white bg-[#0A817F] 
                     hover:bg-[#0A2F1C]
                   "
                 >
@@ -346,7 +345,7 @@ export default function LearningHubTable({
                       <span
                         className="
                           absolute top-0 left-0 
-                          bg-[#0E4123] text-white 
+                          bg-[#0A817F] text-white 
                           px-3 py-1 rounded-br-lg 
                           text-[10px] sm:text-xs md:text-sm
                         "
@@ -434,19 +433,11 @@ export default function LearningHubTable({
                         {/* EDIT BUTTON */}
                         <motion.button
                           onClick={() => setEditingCard(card)}
-                          className="
-                            flex items-center justify-center 
-                            w-[48px] sm:w-[52px] md:w-[56px] 
-                            h-[34px] sm:h-[36px]
-                            transition-all duration-200
-                            bg-transparent rounded-lg 
-                            border border-[#0E4123]
-                            hover:bg-[#0E4123] hover:text-white
-                          "
+                          className="group flex items-center justify-center w-[48px] sm:w-[52px] md:w-[56px] h-[34px] sm:h-[36px] transition-all duration-200 rounded-lg border border-[#0A817F] text-[#0A817F] hover:bg-[#0A817F] hover:text-white active:bg-[#0A817F] active:text-white"
                           whileTap={{ scale: 0.9 }}
                         >
                           <svg
-                            className="w-4 h-4 text-[#0E4123] hover:text-white"
+                            className="w-4 h-4 text-current"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"

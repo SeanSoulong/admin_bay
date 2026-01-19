@@ -215,7 +215,7 @@ export default function AdminDashboardClient({
                   onClick={() => setActiveTab("learninghub")}
                   className={`px-3 py-2 rounded-md text-sm font-medium ${
                     activeTab === "learninghub"
-                      ? "bg-green-100 text-green-700"
+                      ? "bg-[#0A817F] text-white"
                       : "text-gray-700 hover:text-gray-900"
                   }`}
                 >
@@ -310,7 +310,7 @@ export default function AdminDashboardClient({
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <svg
-                    className="h-6 w-6 text-[#0E4123]"
+                    className="h-6 w-6 text-[#0A817F]"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

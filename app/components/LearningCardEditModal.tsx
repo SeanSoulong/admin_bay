@@ -376,7 +376,7 @@ export default function LearningCardEditModal({
                       <div
                         className="
                         flex justify-between text-sm mb-2 
-                        text-[#0E4123]
+                        text-[#0A817F]
                       "
                       >
                         <span className="font-medium">Uploading image...</span>
@@ -391,7 +391,7 @@ export default function LearningCardEditModal({
                       >
                         <div
                           className="
-                            h-full bg-[#0E4123] 
+                            h-full bg-[#0A817F] 
                             transition-all duration-300
                           "
                           style={{ width: `${uploadProgress}%` }}
@@ -427,8 +427,8 @@ export default function LearningCardEditModal({
                             px-4 py-3 
                             text-[13px] sm:text-[14px]
                             transition 
-                            focus:border-[#0E4123] 
-                            focus:ring-2 focus:ring-[#0E4123]/20 
+                            focus:border-[#0A817F] 
+                            focus:ring-2 focus:ring-[#0A817F]/20 
                             disabled:opacity-50
                           "
                           placeholder="Enter card title"
@@ -459,8 +459,8 @@ export default function LearningCardEditModal({
                             px-4 py-3 
                             text-[13px] sm:text-[14px]
                             transition 
-                            focus:border-[#0E4123] 
-                            focus:ring-2 focus:ring-[#0E4123]/20 
+                            focus:border-[#0A817F] 
+                            focus:ring-2 focus:ring-[#0A817F]/20 
                             disabled:opacity-50
                           "
                         >
@@ -497,8 +497,8 @@ export default function LearningCardEditModal({
                             px-4 py-3 
                             text-[13px] sm:text-[14px]
                             transition 
-                            focus:border-[#0E4123] 
-                            focus:ring-2 focus:ring-[#0E4123]/20 
+                            focus:border-[#0A817F] 
+                            focus:ring-2 focus:ring-[#0A817F]/20 
                             disabled:opacity-50
                             resize-none
                           "
@@ -531,8 +531,8 @@ export default function LearningCardEditModal({
                             px-4 py-3 
                             text-[13px] sm:text-[14px]
                             transition 
-                            focus:border-[#0E4123] 
-                            focus:ring-2 focus:ring-[#0E4123]/20 
+                            focus:border-[#0A817F] 
+                            focus:ring-2 focus:ring-[#0A817F]/20 
                             disabled:opacity-50
                           "
                           placeholder="e.g., និពន្ធដោយ: ឈ្មោះ"
@@ -564,8 +564,8 @@ export default function LearningCardEditModal({
                               px-4 py-3 
                               text-[13px] sm:text-[14px]
                               transition 
-                              focus:border-[#0E4123] 
-                              focus:ring-2 focus:ring-[#0E4123]/20 
+                              focus:border-[#0A817F] 
+                              focus:ring-2 focus:ring-[#0A817F]/20 
                               disabled:opacity-50
                             "
                           />
@@ -594,8 +594,8 @@ export default function LearningCardEditModal({
                             text-[#0D1B2A]
                               text-[13px] sm:text-[14px]
                               transition 
-                              focus:border-[#0E4123] 
-                              focus:ring-2 focus:ring-[#0E4123]/20 
+                              focus:border-[#0A817F] 
+                              focus:ring-2 focus:ring-[#0A817F]/20 
                               disabled:opacity-50
                             "
                             placeholder="Auto-calculated"
@@ -687,8 +687,8 @@ export default function LearningCardEditModal({
                                   px-3 py-2 
                                   text-[12px]
                                   transition 
-                                  focus:border-[#0E4123] 
-                                  focus:ring-2 focus:ring-[#0E4123]/20 
+                                  focus:border-[#0A817F] 
+                                  focus:ring-2 focus:ring-[#0A817F]/20 
                                   disabled:opacity-50
                                 "
                                 placeholder="Or enter image URL"
@@ -725,7 +725,7 @@ export default function LearningCardEditModal({
                             className="
                               text-[12px] 
                               
-                              text-[#0E4123] 
+                              text-[#0A817F] 
                               hover:text-[#0A2F1C] 
                               font-medium
                               disabled:opacity-50
@@ -750,8 +750,8 @@ export default function LearningCardEditModal({
                             px-4 py-3 
                             text-[13px] sm:text-[14px]
                             transition 
-                            focus:border-[#0E4123] 
-                            focus:ring-2 focus:ring-[#0E4123]/20 
+                            focus:border-[#0A817F] 
+                            focus:ring-2 focus:ring-[#0A817F]/20 
                             disabled:opacity-50
                             font-mono
                             resize-none
@@ -816,7 +816,7 @@ export default function LearningCardEditModal({
                       className="
                         inline-flex items-center justify-center gap-2 
                         px-6 py-3 
-                        bg-[#0E4123] 
+                        bg-[#0A817F] 
                         text-white font-medium 
                         rounded-lg 
                         hover:bg-[#0A2F1C] 
