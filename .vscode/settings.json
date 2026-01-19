@@ -1,0 +1,24 @@
+{
+  "C_Cpp.default.compilerPath": "C:\\MinGW\\bin\\gcc.exe",
+  "workbench.iconTheme": "material-icon-theme",
+  "liveServer.settings.donotShowInfoMsg": true,
+  "vscode-edge-devtools.webhint": false,
+  "debug.onTaskErrors": "showErrors",
+  "explorer.confirmDelete": false,
+  "code-runner.runInTerminal": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "C_Cpp.clang_format_sortIncludes": true,
+  "explorer.confirmDragAndDrop": false,
+  "[java]": {
+    "editor.defaultFormatter": "redhat.java"
+  },
+
+  "window.zoomLevel": 1,
+  "editor.fontFamily": "JetBrains Mono, Khmer OS ,Consolas, 'Courier New', monospace",
+  "editor.fontLigatures": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.smoothScrolling": true,
+  "editor.mouseWheelZoom": true,
+  "liveServer.settings.port": 5501
+}
