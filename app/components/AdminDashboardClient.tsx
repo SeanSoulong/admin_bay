@@ -7,7 +7,7 @@ import { adminSignOut, firestoreService } from "../lib/firebase";
 import AdminProductsTable from "./AdminProductsTable";
 import AdminReviewsTable from "./AdminReviewsTable";
 import LearningHubTable from "./LearningHubTable";
-import { DashboardPageProps } from "../types";
+import { DashboardPageProps, Product, Review } from "../types";
 
 export default function AdminDashboardClient({
   initialProducts,
@@ -21,8 +21,8 @@ export default function AdminDashboardClient({
   const [activeTab, setActiveTab] = useState<
     "products" | "reviews" | "learninghub"
   >("products");
-  const [products, setProducts] = useState(initialProducts);
-  const [reviews, setReviews] = useState(initialReviews);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [reviews, setReviews] = useState<Review[]>(initialReviews);
   const [learningCards, setLearningCards] = useState(initialLearningCards);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -66,6 +66,7 @@ export default function AdminDashboardClient({
         totalLearningCards: cardsData.length,
         avgRating: parseFloat(avgRating.toFixed(1)),
       });
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Error fetching data:", err);
@@ -80,33 +81,75 @@ export default function AdminDashboardClient({
       await firestoreService.deleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
       await refreshData();
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
       throw err;
     }
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleUpdateProduct = async (id: string, updates: any) => {
-    try {
-      await firestoreService.updateProduct(id, updates);
-      setProducts((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-      );
-      await refreshData();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      console.error("Update error details:", err);
-      alert(`Failed to update product: ${err.message}`);
-      throw err;
-    }
-  };
 
   const handleDeleteReview = async (id: string) => {
     try {
+      // First get the review details
+      const reviewToDelete = reviews.find((r) => r.id === id);
+      if (!reviewToDelete) {
+        throw new Error("Review not found");
+      }
+
+      // Get the product that this review belongs to
+      const product = products.find(
+        (p) =>
+          p.itemId === reviewToDelete.itemId || p.id === reviewToDelete.itemId
+      );
+
+      if (!product) {
+        throw new Error("Product not found for this review");
+      }
+
+      // Calculate new review count and rating
+      const newReviewCount = Math.max(0, product.review_count - 1);
+      let newRating = 0;
+
+      if (newReviewCount > 0) {
+        // Calculate new average: (old_total - deleted_rating) / new_count
+        const oldTotalRating = product.rating * product.review_count;
+        const newTotalRating = oldTotalRating - reviewToDelete.rating;
+        newRating = parseFloat((newTotalRating / newReviewCount).toFixed(1));
+      }
+
+      // Delete the review from the database
       await firestoreService.deleteReview(id);
+
+      // Update the product in the database
+      await firestoreService.updateProduct(product.id, {
+        review_count: newReviewCount,
+        rating: newRating,
+        updatedAt: Date.now(),
+      });
+
+      // Update local state
       setReviews((prev) => prev.filter((r) => r.id !== id));
-      await refreshData();
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id
+            ? {
+                ...p,
+                review_count: newReviewCount,
+                rating: newRating,
+                updatedAt: Date.now(),
+              }
+            : p
+        )
+      );
+
+      // Update stats
+      setStats((prev) => ({
+        ...prev,
+        totalReviews: prev.totalReviews - 1,
+        avgRating: prev.avgRating, // Note: This might need recalculating from all products
+      }));
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
@@ -119,12 +162,14 @@ export default function AdminDashboardClient({
       await firestoreService.deleteLearningCard(uuid);
       setLearningCards((prev) => prev.filter((c) => c.uuid !== uuid));
       await refreshData();
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
       throw err;
     }
   };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUpdateLearningCard = async (uuid: string, updates: any) => {
     try {
@@ -133,6 +178,7 @@ export default function AdminDashboardClient({
         prev.map((c) => (c.uuid === uuid ? { ...c, ...updates } : c))
       );
       await refreshData();
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Update error:", err);
@@ -140,6 +186,7 @@ export default function AdminDashboardClient({
       throw err;
     }
   };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreateLearningCard = async (cardData: any) => {
     try {
@@ -147,6 +194,7 @@ export default function AdminDashboardClient({
       setLearningCards((prev) => [newCard, ...prev]);
       await refreshData();
       return newCard;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Create error:", err);
@@ -215,7 +263,7 @@ export default function AdminDashboardClient({
                   onClick={() => setActiveTab("learninghub")}
                   className={`px-3 py-2 rounded-md text-sm font-medium ${
                     activeTab === "learninghub"
-                      ? "bg-[#0A817F] text-white"
+                      ? "bg-[#CCFFFF] text-[#0A817F]"
                       : "text-gray-700 hover:text-gray-900"
                   }`}
                 >
@@ -400,7 +448,6 @@ export default function AdminDashboardClient({
           <AdminProductsTable
             products={products}
             onDelete={handleDeleteProduct}
-            onUpdate={handleUpdateProduct}
             loading={loading}
           />
         ) : activeTab === "reviews" ? (

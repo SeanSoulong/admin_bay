@@ -75,6 +75,7 @@ export const databaseService = {
     const productRef = ref(db, `${dbPaths.marketplace}/${id}`);
     await remove(productRef);
   },
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createProduct(data: any): Promise<string> {
     const db = getDatabaseInstance();
@@ -123,6 +124,23 @@ export const databaseService = {
     const db = getDatabaseInstance();
     const reviewRef = ref(db, `${dbPaths.reviews}/${id}`);
     await update(reviewRef, { ...data, updatedAt: Date.now() });
+  },
+
+  async getReviewsByProductId(itemId: string): Promise<Review[]> {
+    const db = getDatabaseInstance();
+    const reviewsRef = ref(db, dbPaths.reviews);
+    const snapshot = await get(reviewsRef);
+
+    if (!snapshot.exists()) return [];
+
+    const reviewsData = snapshot.val();
+    return Object.keys(reviewsData)
+      .map((key) => ({
+        id: key,
+        reviewId: key,
+        ...reviewsData[key],
+      }))
+      .filter((review) => review.itemId === itemId);
   },
 
   // Learning Hub
@@ -206,6 +224,7 @@ export const databaseService = {
     if (!savedSnapshot.exists()) return;
 
     const savedData = savedSnapshot.val();
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: Record<string, any> = {};
 

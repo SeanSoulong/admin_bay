@@ -1,16 +1,9 @@
-import { Metadata } from "next";
 import {
   getProducts,
   getReviews,
   getLearningCards,
 } from "../../lib/data-service";
 import AdminDashboardClient from "../../components/AdminDashboardClient";
-
-export const metadata: Metadata = {
-  title: "Admin Dashboard - Marketplace",
-  description:
-    "Admin dashboard for managing products, reviews, and learning content",
-};
 
 export default async function AdminDashboardPage() {
   try {

@@ -34,6 +34,10 @@ export default function LearningHubTable({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [operationType, setOperationType] = useState<
+    "create" | "update" | "delete"
+  >("delete");
 
   const formatDate = (dateString: string) => {
     try {
@@ -47,14 +51,28 @@ export default function LearningHubTable({
     }
   };
 
+  const showSuccess = (
+    message: string,
+    type: "create" | "update" | "delete"
+  ) => {
+    setSuccessMessage(message);
+    setOperationType(type);
+
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage("");
+    }, 3000);
+  };
+
   const handleDelete = async (uuid: string) => {
-    if (window.confirm("តើអ្នកប្រាកដថាចង់លុបកាតនេះទេ?")) {
+    if (window.confirm("Are you sure you want to delete this card?")) {
       setDeletingId(uuid);
       try {
         await onDelete(uuid);
+        showSuccess("Card successfully deleted!", "delete");
       } catch (error) {
         console.error("Delete error:", error);
-        alert("លុបមិនបានសម្រេច");
+        alert("Failed to delete card");
       } finally {
         setDeletingId(null);
       }
@@ -65,6 +83,7 @@ export default function LearningHubTable({
     try {
       await onUpdate(uuid, updates);
       setEditingCard(null);
+      showSuccess("Card successfully updated!", "update");
     } catch (error) {
       console.error("Update error:", error);
       throw error;
@@ -77,6 +96,7 @@ export default function LearningHubTable({
     try {
       const created = await onCreate(cardData);
       setIsCreating(false);
+      showSuccess("New card successfully created!", "create");
       return created;
     } catch (error) {
       console.error("Create error:", error);
@@ -110,6 +130,108 @@ export default function LearningHubTable({
 
   return (
     <>
+      {/* Success Notification */}
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="fixed top-4 right-4 z-50 font-[Kantumruy_Pro]"
+        >
+          <div
+            className={`rounded-lg shadow-lg p-4 flex items-center space-x-3 ${
+              operationType === "delete"
+                ? "bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500"
+                : operationType === "update"
+                ? "bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500"
+                : "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500"
+            }`}
+          >
+            <div
+              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                operationType === "delete"
+                  ? "bg-red-100"
+                  : operationType === "update"
+                  ? "bg-blue-100"
+                  : "bg-green-100"
+              }`}
+            >
+              {operationType === "delete" ? (
+                <svg
+                  className="w-5 h-5 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              ) : operationType === "update" ? (
+                <svg
+                  className="w-5 h-5 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">
+                {operationType === "delete"
+                  ? "Successfully Deleted"
+                  : operationType === "update"
+                  ? "Successfully Updated"
+                  : "Successfully Created"}
+              </p>
+              <p className="text-sm text-gray-600">{successMessage}</p>
+            </div>
+            <button
+              onClick={() => setSuccessMessage("")}
+              className="ml-auto text-gray-400 hover:text-gray-600"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       <div
         className="
         bg-white 
@@ -150,7 +272,9 @@ export default function LearningHubTable({
 
             <div className="flex flex-col sm:flex-row gap-3">
               {/* CREATE BUTTON */}
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setIsCreating(true)}
                 className="
                   inline-flex items-center justify-center gap-2 
@@ -178,7 +302,7 @@ export default function LearningHubTable({
                   />
                 </svg>
                 Create New Card
-              </button>
+              </motion.button>
 
               {/* SEARCH AND FILTER */}
               <div className="flex gap-2">
@@ -198,7 +322,7 @@ export default function LearningHubTable({
                   </svg>
                   <input
                     type="text"
-                    placeholder="ស្វែងរកកាត..."
+                    placeholder="Search cards..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="text-[#0D1B2A] 
@@ -261,8 +385,8 @@ export default function LearningHubTable({
             "
             >
               {cards.length === 0
-                ? "រកមិនឃើញកាតអប់រំ"
-                : "រកមិនឃើញកាតដែលត្រូវនឹងលក្ខខណ្ឌ"}
+                ? "Card not found"
+                : "No matching card founds"}
             </h3>
             <p
               className="
@@ -272,8 +396,8 @@ export default function LearningHubTable({
             "
             >
               {searchTerm || selectedCategory !== "all"
-                ? "សូមព្យាយាមកែលក្ខខណ្ឌស្វែងរករបស់អ្នក"
-                : "សូមចាប់ផ្ដើមដោយបង្កើតកាតអប់រំដំបូងរបស់អ្នក"}
+                ? "Please try adjusting your search criteria"
+                : "Please start by creating your first learning card"}
             </p>
             {!searchTerm &&
               selectedCategory === "all" &&
@@ -289,9 +413,10 @@ export default function LearningHubTable({
                     rounded-lg shadow-sm 
                     text-white bg-[#0A817F] 
                     hover:bg-[#0A2F1C]
+                    transition-all duration-200 hover:scale-105 active:scale-95
                   "
                 >
-                  បង្កើតកាតដំបូង
+                  Create the first card
                 </button>
               )}
           </div>
@@ -313,12 +438,14 @@ export default function LearningHubTable({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="
+                    className={`
                       rounded-lg border border-[#EBECF0] bg-white 
                       overflow-hidden mx-auto 
                       w-full
                       max-w-[360px] sm:max-w-[420px] md:max-w-[500px] lg:max-w-[420px]
-                    "
+                      transition-all duration-300
+                      ${deletingId === card.uuid ? "opacity-50" : ""}
+                    `}
                     whileHover={{ scale: 1.02 }}
                   >
                     {/* IMAGE */}
@@ -334,7 +461,7 @@ export default function LearningHubTable({
                           "https://via.placeholder.com/400x200?text=No+Image"
                         }
                         alt={card.title || "Learning Card"}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
                             "https://via.placeholder.com/400x200?text=No+Image";
@@ -348,6 +475,7 @@ export default function LearningHubTable({
                           bg-[#0A817F] text-white 
                           px-3 py-1 rounded-br-lg 
                           text-[10px] sm:text-xs md:text-sm
+                          transition-colors duration-300
                         "
                       >
                         {card.category || "Uncategorized"}
@@ -435,6 +563,7 @@ export default function LearningHubTable({
                           onClick={() => setEditingCard(card)}
                           className="group flex items-center justify-center w-[48px] sm:w-[52px] md:w-[56px] h-[34px] sm:h-[36px] transition-all duration-200 rounded-lg border border-[#0A817F] text-[#0A817F] hover:bg-[#0A817F] hover:text-white active:bg-[#0A817F] active:text-white"
                           whileTap={{ scale: 0.9 }}
+                          whileHover={{ scale: 1.05 }}
                         >
                           <svg
                             className="w-4 h-4 text-current"
@@ -455,21 +584,26 @@ export default function LearningHubTable({
                         <motion.button
                           onClick={() => handleDelete(card.uuid!)}
                           disabled={deletingId === card.uuid}
-                          className="
+                          className={`
                             items-center
                             rounded-lg 
                             w-full h-[34px] sm:h-[36px]
                             border border-red-600 
                             text-red-600 font-medium
-                            hover:bg-red-600 hover:text-white
-                            transition-colors duration-200
+                            hover:bg-red-400 hover:text-white
+                            transition-all duration-200
                             disabled:opacity-50
-                          "
-                          whileHover={{ y: -2 }}
-                          whileTap={{ scale: 0.98 }}
+                            ${
+                              deletingId === card.uuid
+                                ? "cursor-not-allowed"
+                                : "cursor-pointer"
+                            }
+                          `}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                         >
                           {deletingId === card.uuid ? (
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center justify-center gap-2 text-[14px]">
                               <svg
                                 className="animate-spin h-4 w-4"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -490,10 +624,25 @@ export default function LearningHubTable({
                                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                 ></path>
                               </svg>
-                              កំពុងលុប...
+                              Deleting...
                             </div>
                           ) : (
-                            "លុប"
+                            <div className="flex items-center justify-center gap-2 text-[14px]">
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                              Delete
+                            </div>
                           )}
                         </motion.button>
                       </div>
