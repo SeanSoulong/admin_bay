@@ -478,7 +478,7 @@ export default function ProductDetailModal({
                                 {formatPrice(product.price)}
                               </p>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 ">
                               <p className="text-xs text-gray-500">Unit</p>
                               <div className="flex items-center">
                                 <Package className="w-4 h-4 text-gray-400 mr-1" />
@@ -580,11 +580,11 @@ export default function ProductDetailModal({
                                     {userData.first_name || "Unknown"}{" "}
                                     {userData.last_name || ""}
                                   </p>
-                                  {userData.email && (
+                                  {/* {userData.email && (
                                     <p className="text-xs text-gray-500 truncate">
                                       {userData.email}
                                     </p>
-                                  )}
+                                  )} */}
                                   {userData.role && (
                                     <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded">
                                       {userData.role}

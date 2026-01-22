@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, Trash2, XCircle, Save, Loader2 } from "lucide-react";
 import { Product } from "../types";
-import { databaseService, storage } from "../lib/firebase";
+import { storage } from "../lib/firebase";
 import {
   ref,
   uploadBytesResumable,
@@ -52,7 +53,7 @@ export default function ProductEditModal({
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [, setUploadProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
   const [uploadTasks, setUploadTasks] = useState<
@@ -80,6 +81,7 @@ export default function ProductEditModal({
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Initialize form when modal opens
@@ -118,7 +120,7 @@ export default function ProductEditModal({
       });
       setUploadTasks([]);
     }
-  }, [product, isOpen]);
+  }, [product, isOpen, localImages, uploadTasks]);
 
   // Upload image to Firebase Storage with progress tracking
   const uploadImageToFirebase = async (
