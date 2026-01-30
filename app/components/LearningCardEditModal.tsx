@@ -801,7 +801,7 @@ export default function LearningCardEditModal({
                         border border-[#D1D5DB] 
                         bg-white 
                         text-[#0D1B2A] font-medium 
-                        rounded-lg 
+                        rounded-full
                         hover:bg-[#F9FAFB] 
                         transition-colors 
                         disabled:opacity-50
@@ -818,7 +818,7 @@ export default function LearningCardEditModal({
                         px-6 py-3 
                         bg-[#0A817F] 
                         text-white font-medium 
-                        rounded-lg 
+                        rounded-full 
                         hover:bg-[#0A2F1C] 
                         transition-colors 
                         disabled:opacity-50

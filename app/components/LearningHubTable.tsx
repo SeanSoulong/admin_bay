@@ -281,7 +281,7 @@ export default function LearningHubTable({
                   px-4 py-2.5 
                   bg-[#0A817F] 
                   text-white font-medium 
-                  rounded-lg 
+                  rounded-lg
                   hover:bg-[#0A2F1C] 
                   transition-colors 
                   shadow-sm
@@ -328,7 +328,7 @@ export default function LearningHubTable({
                     className="text-[#0D1B2A] 
                       pl-10 pr-4 py-2.5 
                       border border-[#D1D5DB] 
-                      rounded-lg 
+                      rounded-full 
                       focus:border-[#0A817F] 
                       focus:ring-2 focus:ring-[#0A817F]/20 
                       w-full sm:w-64
@@ -561,7 +561,7 @@ export default function LearningHubTable({
                         {/* EDIT BUTTON */}
                         <motion.button
                           onClick={() => setEditingCard(card)}
-                          className="group flex items-center justify-center w-[48px] sm:w-[52px] md:w-[56px] h-[34px] sm:h-[36px] transition-all duration-200 rounded-lg border border-[#0A817F] text-[#0A817F] hover:bg-[#0A817F] hover:text-white active:bg-[#0A817F] active:text-white"
+                          className="group flex items-center justify-center w-[48px] sm:w-[52px] md:w-[56px] h-[34px] sm:h-[36px] transition-all duration-200 rounded-full border border-[#0A817F] text-[#0A817F] hover:bg-[#0A817F] hover:text-white active:bg-[#0A817F] active:text-white"
                           whileTap={{ scale: 0.9 }}
                           whileHover={{ scale: 1.05 }}
                         >
@@ -586,7 +586,7 @@ export default function LearningHubTable({
                           disabled={deletingId === card.uuid}
                           className={`
                             items-center
-                            rounded-lg 
+                            rounded-full 
                             w-full h-[34px] sm:h-[36px]
                             border border-red-600 
                             text-red-600 font-medium

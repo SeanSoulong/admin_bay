@@ -3,13 +3,15 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Review, Product } from "../types";
 import { getDatabase, ref, get } from "firebase/database";
+import { motion, AnimatePresence } from "framer-motion";
+import ReviewDetailModal from "./ReviewDetailModal";
 
 interface AdminReviewsTableProps {
   reviews: Review[];
   onDelete: (id: string) => Promise<void>;
   onUpdate?: (id: string, updates: Partial<Review>) => Promise<void>;
   loading: boolean;
-  products?: Product[]; // Changed from Record<string, { name: string }> to Product[]
+  products?: Product[];
 }
 
 interface UserData {
@@ -67,11 +69,63 @@ const useUserData = (userIds: string[]) => {
   return { userData, loading };
 };
 
+// Skeleton Loader Component
+const ReviewRowSkeleton = () => {
+  return (
+    <motion.tr
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="animate-pulse"
+    >
+      <td className="px-6 py-4">
+        <div className="h-4 w-4 bg-gray-200 rounded"></div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="space-y-2">
+          <div className="h-4 bg-gray-200 rounded w-48"></div>
+          <div className="h-3 bg-gray-200 rounded w-24"></div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="flex items-center">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-4 w-4 bg-gray-200 rounded mr-1"></div>
+            ))}
+          </div>
+          <div className="ml-2 h-4 bg-gray-200 rounded w-8"></div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="space-y-2">
+          <div className="h-4 bg-gray-200 rounded w-32"></div>
+          <div className="h-3 bg-gray-200 rounded w-24"></div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-8 w-8 bg-gray-200 rounded-full"></div>
+          <div className="ml-3">
+            <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-16"></div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-24"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-8 bg-gray-200 rounded w-36"></div>
+      </td>
+    </motion.tr>
+  );
+};
+
 export default function AdminReviewsTable({
   reviews,
   onDelete,
   loading,
-  products = [], // Changed default to empty array
+  products = [],
 }: AdminReviewsTableProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,6 +137,10 @@ export default function AdminReviewsTable({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [detailReview, setDetailReview] = useState<Review | null>(null);
+  const [selectedProductForReview, setSelectedProductForReview] = useState<
+    Product | undefined
+  >(undefined);
 
   // Get unique user IDs from reviews
   const uniqueUserIds = useMemo(
@@ -98,7 +156,6 @@ export default function AdminReviewsTable({
   const productMap = useMemo(() => {
     const map: Record<string, string> = {};
     products.forEach((product) => {
-      // Use itemId if available, otherwise use id
       const productId = product.itemId || product.id;
       map[productId] = product.name;
     });
@@ -165,53 +222,22 @@ export default function AdminReviewsTable({
     [userData]
   );
 
-  // Function to get product name with debugging
   const getProductName = useCallback(
     (itemId: string) => {
-      console.log("Looking for product with itemId:", itemId);
-      console.log("Total products:", products.length);
-
-      // Log first few products for comparison
-      if (products.length > 0) {
-        console.log("Sample products:", products.slice(0, 3));
-      }
-
-      // Try multiple lookup strategies
-      let productName = "Unknown Product";
-      let foundProduct = null;
-
-      // Strategy 1: Look in productMap (itemId match)
-      productName = productMap[itemId] || "Unknown Product";
+      let productName = productMap[itemId] || "Unknown Product";
 
       if (productName === "Unknown Product") {
-        // Strategy 2: Find by product.id
-        foundProduct = products.find((p) => p.id === itemId);
+        const foundProduct = products.find((p) => p.id === itemId);
         if (foundProduct) {
           productName = foundProduct.name;
-          console.log(`Found by product.id: ${foundProduct.name}`);
         }
       }
 
       if (productName === "Unknown Product") {
-        // Strategy 3: Find by product.itemId
-        foundProduct = products.find((p) => p.itemId === itemId);
+        const foundProduct = products.find((p) => p.itemId === itemId);
         if (foundProduct) {
           productName = foundProduct.name;
-          console.log(`Found by product.itemId: ${foundProduct.name}`);
         }
-      }
-
-      // Log if still not found
-      if (productName === "Unknown Product") {
-        console.log(`Product not found for itemId: ${itemId}`);
-        console.log(
-          "Available product IDs:",
-          products.map((p) => ({
-            id: p.id,
-            itemId: p.itemId,
-            name: p.name,
-          }))
-        );
       }
 
       return productName;
@@ -224,7 +250,6 @@ export default function AdminReviewsTable({
       setDeletingId(id);
       try {
         await onDelete(id);
-        // Remove from selected reviews if present
         setSelectedReviews((prev) =>
           prev.filter((reviewId) => reviewId !== id)
         );
@@ -281,7 +306,6 @@ export default function AdminReviewsTable({
   // Filter and sort reviews
   const filteredReviews = useMemo(() => {
     const result = reviews.filter((review) => {
-      // Search filter
       const searchLower = debouncedSearchTerm.toLowerCase();
       const matchesSearch =
         !debouncedSearchTerm ||
@@ -291,7 +315,6 @@ export default function AdminReviewsTable({
         getUserEmail(review.userId).toLowerCase().includes(searchLower) ||
         getProductName(review.itemId).toLowerCase().includes(searchLower);
 
-      // Rating filter
       const matchesRating = ratingFilter
         ? review.rating === ratingFilter
         : true;
@@ -388,9 +411,37 @@ export default function AdminReviewsTable({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span className="sr-only">Loading reviews...</span>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden font-['Kantumruy_Pro']">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
+            </div>
+            <div className="flex gap-3">
+              <div className="h-10 bg-gray-200 rounded w-64"></div>
+              <div className="h-10 bg-gray-200 rounded w-32"></div>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {[...Array(7)].map((_, i) => (
+                  <th key={i} className="px-6 py-3">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {[...Array(5)].map((_, i) => (
+                <ReviewRowSkeleton key={i} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
@@ -398,108 +449,75 @@ export default function AdminReviewsTable({
   return (
     <>
       {/* Success Notification */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-in font-['Kantumruy_Pro']">
-          <div className="rounded-lg shadow-lg p-4 flex items-center space-x-3 bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 right-4 z-50 animate-slide-in font-['Kantumruy_Pro']"
+          >
+            <div className="rounded-lg shadow-lg p-4 flex items-center space-x-3 bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  Successfully Deleted
+                </p>
+                <p className="text-sm text-gray-600">{successMessage}</p>
+              </div>
+              <button
+                onClick={() => setSuccessMessage("")}
+                className="ml-auto text-gray-400 hover:text-gray-600"
+                aria-label="Dismiss notification"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                Successfully Deleted
-              </p>
-              <p className="text-sm text-gray-600">{successMessage}</p>
-            </div>
-            <button
-              onClick={() => setSuccessMessage("")}
-              className="ml-auto text-gray-400 hover:text-gray-600"
-              aria-label="Dismiss notification"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden font-['Kantumruy_Pro']">
         {/* Header with Controls */}
-        <div className="px-6 py-4 border-b border-gray-200">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="px-6 py-4 border-b border-gray-200"
+        >
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-800">
                 Reviews Management
               </h2>
-              <p
-                className="text-sm text-gray-600 mt-1 flex items-center gap-2.5
-              "
-              >
-                Showing {paginatedReviews.length} of {filteredReviews.length}{" "}
-                {/* <svg
-                  className="h-3.5 w-3.5 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                  />
-                </svg>{" "}
-                • {Object.keys(userData).length}{" "}
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 64 64"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <circle cx="32" cy="20" r="12" fill="#808080" />
-
-                  <path
-                    d="M12 54C12 42.95 21.4 36 32 36C42.6 36 52 42.95 52 54"
-                    fill="#808080"
-                  />
-                </svg>
-                • {products.length}
-                <svg
-                  className="h-3.5 w-3.5 text-blue-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                  />
-                </svg> */}
+              <p className="text-sm text-gray-600 mt-1">
+                Showing {paginatedReviews.length} of {filteredReviews.length}
               </p>
             </div>
 
@@ -518,47 +536,57 @@ export default function AdminReviewsTable({
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                <input
+                <motion.input
                   type="text"
                   placeholder="Search reviews, users, or products..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="text-[#0D1B2A] block sm:text-sm px-3 py-2 border border-[#D1D5DB] 
-                        rounded-lg 
+                        rounded-full 
                         focus:border-[#0E4123] 
                         focus:ring-2 focus:ring-[#0E4123]/20 
                         w-full sm:w-64
                         text-[13px] sm:text-[14px] pl-10"
                   aria-label="Search reviews"
+                  whileFocus={{ scale: 1.01 }}
                 />
               </div>
 
-              {selectedReviews.length > 0 && (
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={deletingId !== null}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                >
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              <AnimatePresence>
+                {selectedReviews.length > 0 && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleBulkDelete}
+                    disabled={deletingId !== null}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                  Delete Selected ({selectedReviews.length})
-                </button>
-              )}
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    Delete Selected ({selectedReviews.length})
+                  </motion.button>
+                )}
+              </AnimatePresence>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={exportToCSV}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex rounded-full items-center px-4 py-2 border border-gray-300 text-sm font-medium  text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <svg
                   className="w-4 h-4 mr-2"
@@ -574,7 +602,7 @@ export default function AdminReviewsTable({
                   />
                 </svg>
                 Export CSV
-              </button>
+              </motion.button>
             </div>
           </div>
 
@@ -583,7 +611,9 @@ export default function AdminReviewsTable({
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-700">Filter by rating:</span>
               <div className="flex gap-1">
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setRatingFilter(null)}
                   className={`px-3 py-1 text-sm rounded-full ${
                     !ratingFilter
@@ -592,10 +622,12 @@ export default function AdminReviewsTable({
                   }`}
                 >
                   All
-                </button>
+                </motion.button>
                 {[1, 2, 3, 4, 5].map((rating) => (
-                  <button
+                  <motion.button
                     key={rating}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setRatingFilter(rating)}
                     className={`px-3 py-1 text-sm rounded-full flex items-center gap-1 ${
                       ratingFilter === rating
@@ -617,30 +649,36 @@ export default function AdminReviewsTable({
                         d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
                       />
                     </svg>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
               <span className="text-sm text-gray-700">Show:</span>
-              <select
+              <motion.select
+                whileFocus={{ scale: 1.01 }}
                 value={itemsPerPage}
                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
                 className="text-sm border text-[#0D1B2A] border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
+                <option value={5}>5</option>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
                 <option value={100}>100</option>
-              </select>
+              </motion.select>
               <span className="text-sm text-gray-700">per page</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {filteredReviews.length === 0 ? (
-          <div className="text-center py-12">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
               fill="none"
@@ -662,7 +700,7 @@ export default function AdminReviewsTable({
                 ? "Try adjusting your search or filter criteria"
                 : "No reviews have been posted yet."}
             </p>
-          </div>
+          </motion.div>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -689,70 +727,85 @@ export default function AdminReviewsTable({
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("comment")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Review
                         {sortField === "comment" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("rating")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Rating
                         {sortField === "rating" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("productName")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Product
                         {sortField === "productName" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("userName")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Review By
                         {sortField === "userName" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("createdAt")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Date
                         {sortField === "createdAt" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
@@ -763,147 +816,142 @@ export default function AdminReviewsTable({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedReviews.map((review) => {
-                    const userFullName = getUserDisplayName(review.userId);
-                    const userEmail = getUserEmail(review.userId);
-                    const productName = getProductName(review.itemId);
+                  <AnimatePresence>
+                    {paginatedReviews.map((review, index) => {
+                      const userFullName = getUserDisplayName(review.userId);
+                      const userEmail = getUserEmail(review.userId);
+                      const productName = getProductName(review.itemId);
 
-                    return (
-                      <tr
-                        key={review.id}
-                        className={`hover:bg-gray-50 transition-all duration-200 ${
-                          deletingId === review.id ? "opacity-50" : ""
-                        } ${
-                          selectedReviews.includes(review.id)
-                            ? "bg-blue-50"
-                            : ""
-                        }`}
-                      >
-                        <td className="px-6 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedReviews.includes(review.id)}
-                            onChange={() => handleSelectReview(review.id)}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            aria-label={`Select review by ${userFullName}`}
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-xs">
-                            <div className="line-clamp-2">{review.comment}</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              ID: {review.id.substring(0, 8)}...
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex items-center">
-                              {[...Array(5)].map((_, i) => (
-                                <svg
-                                  key={i}
-                                  className={`h-4 w-4 ${
-                                    i < review.rating
-                                      ? "text-yellow-400"
-                                      : "text-gray-300"
-                                  }`}
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              ))}
-                            </div>
-                            <span className="ml-2 text-sm font-medium text-gray-900">
-                              {review.rating}/5
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm">
-                            <div className="text-gray-900 font-medium">
-                              {productName}
-                            </div>
-                            <div className="text-xs text-gray-500 font-mono">
-                              {review.itemId.substring(0, 12)}...
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            {loadingUsers ? (
-                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <div className="animate-pulse h-5 w-5 bg-gray-300 rounded"></div>
+                      return (
+                        <motion.tr
+                          key={review.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ delay: index * 0.05 }}
+                          className={`hover:bg-gray-50 transition-all duration-200 ${
+                            deletingId === review.id ? "opacity-50" : ""
+                          } ${
+                            selectedReviews.includes(review.id)
+                              ? "bg-blue-50"
+                              : ""
+                          }`}
+                        >
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedReviews.includes(review.id)}
+                              onChange={() => handleSelectReview(review.id)}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              aria-label={`Select review by ${userFullName}`}
+                            />
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 max-w-xs">
+                              <div className="line-clamp-2">
+                                {review.comment}
                               </div>
-                            ) : userData[review.userId]?.profileImageUrl ? (
-                              <img
-                                src={userData[review.userId].profileImageUrl}
-                                alt={userFullName}
-                                className="h-8 w-8 rounded-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
-                            ) : (
-                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-xs font-medium text-gray-600">
-                                  {userFullName.charAt(0).toUpperCase()}
-                                </span>
+                              <div className="text-xs text-gray-500 mt-1">
+                                ID: {review.id.substring(0, 8)}...
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex items-center">
+                                {[...Array(5)].map((_, i) => (
+                                  <motion.svg
+                                    key={i}
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className={`h-4 w-4 ${
+                                      i < review.rating
+                                        ? "text-yellow-400"
+                                        : "text-gray-300"
+                                    }`}
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.783.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </motion.svg>
+                                ))}
+                              </div>
+                              <span className="ml-2 text-sm font-medium text-gray-900">
+                                {review.rating}/5
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm">
+                              <div className="text-gray-900 font-medium">
+                                {productName}
+                              </div>
+                              <div className="text-xs text-gray-500 font-mono">
+                                {review.itemId.substring(0, 12)}...
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              {loadingUsers ? (
+                                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                  <div className="animate-pulse h-5 w-5 bg-gray-300 rounded"></div>
+                                </div>
+                              ) : userData[review.userId]?.profileImageUrl ? (
+                                <motion.img
+                                  whileHover={{ scale: 1.1 }}
+                                  src={userData[review.userId].profileImageUrl}
+                                  alt={userFullName}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                  <span className="text-xs font-medium text-gray-600">
+                                    {userFullName.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {userFullName}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {userEmail}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {formatDate(review.createdAt)}
+                            </div>
+                            {review.updatedAt !== review.createdAt && (
+                              <div className="text-xs text-gray-500">
+                                Updated: {formatDate(review.updatedAt)}
                               </div>
                             )}
-                            <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
-                                {userFullName}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {userEmail}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {formatDate(review.createdAt)}
-                          </div>
-                          {review.updatedAt !== review.createdAt && (
-                            <div className="text-xs text-gray-500">
-                              Updated: {formatDate(review.updatedAt)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleDelete(review.id)}
-                            disabled={deletingId === review.id}
-                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-all duration-200 hover:scale-105 active:scale-95"
-                            aria-label={`Delete review by ${userFullName}`}
-                          >
-                            {deletingId === review.id ? (
-                              <>
-                                <svg
-                                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                  ></circle>
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  ></path>
-                                </svg>
-                                Deleting...
-                              </>
-                            ) : (
-                              <>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => {
+                                  const productForReview = products.find(
+                                    (p) =>
+                                      p.id === review.itemId ||
+                                      p.itemId === review.itemId
+                                  );
+                                  setSelectedProductForReview(productForReview);
+                                  setDetailReview(review);
+                                }}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                                aria-label={`View details of review by ${userFullName}`}
+                              >
                                 <svg
                                   className="w-4 h-4 mr-1"
                                   fill="none"
@@ -914,104 +962,410 @@ export default function AdminReviewsTable({
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth="2"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                                   />
                                 </svg>
-                                Delete
-                              </>
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                                View Details
+                              </motion.button>
+
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleDelete(review.id)}
+                                disabled={deletingId === review.id}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-all duration-200"
+                                aria-label={`Delete review by ${userFullName}`}
+                              >
+                                {deletingId === review.id ? (
+                                  <>
+                                    <svg
+                                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      ></circle>
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                      ></path>
+                                    </svg>
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4 mr-1"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                    Delete
+                                  </>
+                                )}
+                              </motion.button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </AnimatePresence>
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-                  Showing{" "}
-                  <span className="font-medium">
-                    {(currentPage - 1) * itemsPerPage + 1}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-medium">
-                    {Math.min(
-                      currentPage * itemsPerPage,
-                      filteredReviews.length
-                    )}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-medium">{filteredReviews.length}</span>{" "}
-                  results
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    First
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Previous
-                  </button>
-
-                  {/* Page numbers */}
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 text-sm border rounded-md ${
-                          currentPage === pageNum
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                        }`}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="px-4 py-4 border-t border-gray-200"
+              >
+                {/* Mobile pagination */}
+                <div className="sm:hidden flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex space-x-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.max(1, currentPage - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Previous page"
+                    >
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Next
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Last
-                  </button>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      <span className="sr-only sm:not-sr-only">Prev</span>
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.min(totalPages, currentPage + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Next page"
+                    >
+                      <span className="sr-only sm:not-sr-only">Next</span>
+                      <svg
+                        className="w-4 h-4 ml-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+                  </div>
                 </div>
-              </div>
+
+                {/* Desktop pagination */}
+                <div className="hidden sm:flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                  <div className="text-sm text-gray-700">
+                    Showing{" "}
+                    <span className="font-medium">
+                      {(currentPage - 1) * itemsPerPage + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-medium">
+                      {Math.min(
+                        currentPage * itemsPerPage,
+                        filteredReviews.length
+                      )}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-medium">
+                      {filteredReviews.length}
+                    </span>{" "}
+                    reviews
+                  </div>
+
+                  <div className="flex items-center space-x-1 lg:space-x-2">
+                    {/* First Page Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="text-gray-700 px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
+                      title="First Page"
+                      aria-label="Go to first page"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                        />
+                      </svg>
+                    </motion.button>
+
+                    {/* Previous Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.max(1, currentPage - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Previous page"
+                    >
+                      <svg
+                        className="text-gray-700 w-4 h-4 mr-1 hidden sm:inline"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      <span className="sm:inline text-gray-700">Previous</span>
+                    </motion.button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {/* Show first page and ellipsis if needed */}
+                      {currentPage > 3 && totalPages > 5 && (
+                        <>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setCurrentPage(1)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 min-w-[2.5rem]"
+                          >
+                            1
+                          </motion.button>
+                          {currentPage > 4 && (
+                            <span className="px-2 text-gray-500">...</span>
+                          )}
+                        </>
+                      )}
+
+                      {/* Show surrounding pages */}
+                      {(() => {
+                        const pages = [];
+                        const maxVisible = 5;
+                        let startPage = Math.max(
+                          1,
+                          currentPage - Math.floor(maxVisible / 2)
+                        );
+                        const endPage = Math.min(
+                          totalPages,
+                          startPage + maxVisible - 1
+                        );
+
+                        // Adjust start page if we're near the end
+                        if (endPage - startPage + 1 < maxVisible) {
+                          startPage = Math.max(1, endPage - maxVisible + 1);
+                        }
+
+                        for (
+                          let pageNum = startPage;
+                          pageNum <= endPage;
+                          pageNum++
+                        ) {
+                          pages.push(
+                            <motion.button
+                              key={pageNum}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-1.5 text-sm border rounded-md min-w-[2.5rem] ${
+                                currentPage === pageNum
+                                  ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                                  : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                              }`}
+                              aria-label={`Go to page ${pageNum}`}
+                              aria-current={
+                                currentPage === pageNum ? "page" : undefined
+                              }
+                            >
+                              {pageNum}
+                            </motion.button>
+                          );
+                        }
+                        return pages;
+                      })()}
+
+                      {/* Show last page and ellipsis if needed */}
+                      {currentPage < totalPages - 2 && totalPages > 5 && (
+                        <>
+                          {currentPage < totalPages - 3 && (
+                            <span className="px-2 text-gray-500">...</span>
+                          )}
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 min-w-[2.5rem]"
+                          >
+                            {totalPages}
+                          </motion.button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Next Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.min(totalPages, currentPage + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Next page"
+                    >
+                      <span className="sm:inline text-gray-700">Next</span>
+                      <svg
+                        className="text-gray-700 w-4 h-4 ml-1 hidden sm:inline"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+
+                    {/* Last Page Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="text-gray-700 px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
+                      title="Last Page"
+                      aria-label="Go to last page"
+                    >
+                      <svg
+                        className="text-gray-700 w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+                  </div>
+                </div>
+
+                {/* Mobile page indicator dots */}
+                <div className="sm:hidden flex justify-center mt-3">
+                  <div className="flex space-x-1">
+                    {(() => {
+                      const maxDots = Math.min(5, totalPages);
+                      const dots = [];
+
+                      let startDot = 1;
+                      if (currentPage > 3) {
+                        startDot = currentPage - 1;
+                      }
+                      if (startDot + maxDots - 1 > totalPages) {
+                        startDot = totalPages - maxDots + 1;
+                      }
+
+                      for (let i = 0; i < maxDots; i++) {
+                        const pageNum = startDot + i;
+                        if (pageNum > totalPages) break;
+
+                        dots.push(
+                          <motion.div
+                            key={pageNum}
+                            className={`w-2 h-2 rounded-full transition-colors ${
+                              currentPage === pageNum
+                                ? "bg-blue-600"
+                                : "bg-gray-300"
+                            }`}
+                            animate={{
+                              scale: currentPage === pageNum ? 1.2 : 1,
+                            }}
+                            aria-hidden="true"
+                          />
+                        );
+                      }
+                      return dots;
+                    })()}
+                  </div>
+                </div>
+              </motion.div>
             )}
           </>
         )}
       </div>
+
+      {/* Review Detail Modal */}
+      {detailReview && (
+        <ReviewDetailModal
+          review={detailReview}
+          product={selectedProductForReview}
+          isOpen={!!detailReview}
+          onClose={() => {
+            setDetailReview(null);
+            setSelectedProductForReview(undefined);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -669,7 +669,7 @@ export default function ProductDetailModal({
                       <div className="flex justify-end">
                         <button
                           onClick={onClose}
-                          className="inline-flex items-center px-4 py-2 border bg-[#3f76c4] border-gray-300 shadow-sm text-sm font-medium rounded-md text-white hover:bg-[#374151] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                          className="inline-flex items-center px-4 py-2 border bg-[#3f76c4] border-gray-300 shadow-sm text-sm font-medium rounded-full text-white hover:bg-[#374151] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                         >
                           Close
                         </button>

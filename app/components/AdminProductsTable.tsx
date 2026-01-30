@@ -5,6 +5,7 @@ import { Product } from "../types";
 import ProductDetailModal from "./ProductDetailModal";
 import { User } from "lucide-react";
 import { getDatabase, ref, get } from "firebase/database";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AdminProductsTableProps {
   products: Product[];
@@ -66,6 +67,92 @@ const useUserData = (userIds: string[]) => {
   }, [userIds]);
 
   return { userData, loading };
+};
+
+// Skeleton Loader Component
+const ProductRowSkeleton = () => {
+  return (
+    <motion.tr
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="animate-pulse"
+    >
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-12 w-12 bg-gray-200 rounded-lg"></div>
+          <div className="ml-4">
+            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-16"></div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-16"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="flex items-center">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-4 w-4 bg-gray-200 rounded mr-1"></div>
+            ))}
+          </div>
+          <div className="ml-2 h-4 bg-gray-200 rounded w-8"></div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full"></div>
+          <div className="ml-3">
+            <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-16"></div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-24"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex space-x-2">
+          <div className="h-8 bg-gray-200 rounded w-16"></div>
+          <div className="h-8 bg-gray-200 rounded w-16"></div>
+        </div>
+      </td>
+    </motion.tr>
+  );
+};
+
+// Stats Skeleton
+const StatsSkeleton = () => {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 mb-6">
+      {[...Array(4)].map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.1 }}
+          className="bg-white shadow rounded-lg overflow-hidden"
+        >
+          <div className="p-3 sm:p-4 md:p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6 bg-gray-200 rounded"></div>
+              </div>
+              <div className="ml-3 flex-1 min-w-0">
+                <dl>
+                  <dt className="h-3 bg-gray-200 rounded w-20 mb-2"></dt>
+                  <dd className="h-6 bg-gray-200 rounded w-12"></dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
 };
 
 export default function AdminProductsTable({
@@ -301,8 +388,37 @@ export default function AdminProductsTable({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden font-['Kantumruy_Pro']">
+        {/* Header Skeleton */}
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-24"></div>
+          </div>
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {[...Array(7)].map((_, i) => (
+                  <th key={i} className="px-6 py-3">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {[...Array(5)].map((_, i) => (
+                <ProductRowSkeleton key={i} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
@@ -310,82 +426,94 @@ export default function AdminProductsTable({
   return (
     <>
       {/* Success Notification */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-in font-['Kantumruy_Pro']">
-          <div
-            className={`rounded-lg shadow-lg p-4 flex items-center space-x-3 ${
-              operationType === "delete"
-                ? "bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500"
-                : "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500"
-            }`}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 right-4 z-50 animate-slide-in font-['Kantumruy_Pro']"
           >
             <div
-              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                operationType === "delete" ? "bg-red-100" : "bg-green-100"
+              className={`rounded-lg shadow-lg p-4 flex items-center space-x-3 ${
+                operationType === "delete"
+                  ? "bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500"
+                  : "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500"
               }`}
             >
-              {operationType === "delete" ? (
-                <svg
-                  className="w-5 h-5 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-5 h-5 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                {operationType === "delete"
-                  ? "Successfully Deleted"
-                  : "Successfully Updated"}
-              </p>
-              <p className="text-sm text-gray-600">{successMessage}</p>
-            </div>
-            <button
-              onClick={() => setSuccessMessage("")}
-              className="ml-auto text-gray-400 hover:text-gray-600"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <div
+                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                  operationType === "delete" ? "bg-red-100" : "bg-green-100"
+                }`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+                {operationType === "delete" ? (
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-5 h-5 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {operationType === "delete"
+                    ? "Successfully Deleted"
+                    : "Successfully Updated"}
+                </p>
+                <p className="text-sm text-gray-600">{successMessage}</p>
+              </div>
+              <button
+                onClick={() => setSuccessMessage("")}
+                className="ml-auto text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden font-['Kantumruy_Pro']">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="px-6 py-4 border-b border-gray-200"
+        >
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-800">
@@ -394,9 +522,6 @@ export default function AdminProductsTable({
               <p className="text-sm text-gray-600 mt-1">
                 Showing {paginatedProducts.length} of{" "}
                 {filteredAndSortedProducts.length}
-                {/* products • Avg. price:{" "}
-                {formatPrice(stats.avgPrice)} • Avg. rating:{" "}
-                {stats.avgRating.toFixed(1)} ⭐ */}
               </p>
             </div>
 
@@ -422,48 +547,57 @@ export default function AdminProductsTable({
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                <input
+                <motion.input
                   type="text"
                   placeholder="Search products, descriptions, or users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 text-[#0D1B2A] pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 text-[#0D1B2A] pr-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  whileFocus={{ scale: 1.01 }}
                 />
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <select
+            <div className="flex gap-2 items-center">
+              <motion.select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 className="border border-gray-300 text-[#0D1B2A] rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                whileFocus={{ scale: 1.01 }}
               >
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat === "all" ? "All Categories" : cat}
                   </option>
                 ))}
-              </select>
+              </motion.select>
 
-              <select
+              <motion.select
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
                 className="border border-gray-300 text-[#0D1B2A] rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                whileFocus={{ scale: 1.01 }}
               >
-                <option value={10}>10 per page</option>
-                <option value={25}>25 per page</option>
-                <option value={50}>50 per page</option>
-                <option value={100}>100 per page</option>
-              </select>
+                <option value={5}>5</option>
+                <option value={10}>10 </option>
+                <option value={25}>25 </option>
+                <option value={50}>50 </option>
+                <option value={100}>100 </option>
+              </motion.select>
+              <span className="text-sm text-gray-700">per page</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {paginatedProducts.length === 0 ? (
-          <div className="text-center py-12">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
               fill="none"
@@ -485,7 +619,7 @@ export default function AdminProductsTable({
                 ? "Try adjusting your search or filter criteria"
                 : "Get started by adding a new product."}
             </p>
-          </div>
+          </motion.div>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -497,84 +631,102 @@ export default function AdminProductsTable({
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("name")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Product
                         {sortField === "name" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("category")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Category
                         {sortField === "category" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("price")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Price
                         {sortField === "price" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("rating")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Rating
                         {sortField === "rating" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("userName")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Posted By
                         {sortField === "userName" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("createdAt")}
                     >
-                      <div className="flex items-center">
+                      <motion.div
+                        className="flex items-center"
+                        whileHover={{ scale: 1.02 }}
+                      >
                         Created
                         {sortField === "createdAt" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </motion.div>
                     </th>
                     <th
                       scope="col"
@@ -585,305 +737,528 @@ export default function AdminProductsTable({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedProducts.map((product) => {
-                    const productUser = product.userId
-                      ? userData[product.userId]
-                      : null;
-                    const userDisplayName = getUserDisplayName(product.userId);
+                  <AnimatePresence>
+                    {paginatedProducts.map((product, index) => {
+                      const productUser = product.userId
+                        ? userData[product.userId]
+                        : null;
+                      const userDisplayName = getUserDisplayName(
+                        product.userId
+                      );
 
-                    return (
-                      <tr
-                        key={product.id}
-                        className={`hover:bg-gray-50 transition-all duration-200 ${
-                          deletingId === product.id ? "opacity-50" : ""
-                        }`}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-12 w-12">
-                              {product.images && product.images[0] ? (
-                                <img
-                                  className="h-12 w-12 rounded-lg object-cover"
-                                  src={product.images[0]}
-                                  alt={product.name}
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src =
-                                      "https://via.placeholder.com/48x48?text=No+Image";
-                                  }}
-                                />
-                              ) : (
-                                <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
-                                  <svg
-                                    className="h-6 w-6 text-gray-400"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                    />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {product.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {product.unit}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              product.category === "ផ្លែឈើ"
-                                ? "bg-green-100 text-green-800"
-                                : product.category === "បន្លែ"
-                                ? "bg-blue-100 text-blue-800"
-                                : product.category === "ផ្សេងៗ"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {product.category}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {formatPrice(product.price)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
+                      return (
+                        <motion.tr
+                          key={product.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ delay: index * 0.05 }}
+                          className={`hover:bg-gray-50 transition-all duration-200 ${
+                            deletingId === product.id ? "opacity-50" : ""
+                          }`}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              {[...Array(5)].map((_, i) => (
-                                <svg
-                                  key={i}
-                                  className={`h-4 w-4 ${
-                                    i < Math.floor(product.rating)
-                                      ? "text-yellow-400"
-                                      : "text-gray-300"
-                                  }`}
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              ))}
-                            </div>
-                            <span className="ml-1 text-sm text-gray-600">
-                              {product.rating.toFixed(1)}
-                            </span>
-                            <span className="ml-2 text-xs text-gray-500">
-                              ({product.review_count} reviews)
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                              {usersLoading ? (
-                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                  <div className="animate-pulse h-5 w-5 bg-gray-300 rounded"></div>
-                                </div>
-                              ) : productUser?.profileImageUrl ? (
-                                <img
-                                  src={productUser.profileImageUrl}
-                                  alt="Profile"
-                                  className="h-10 w-10 rounded-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src =
-                                      "https://cdn.pixabay.com/photo/2023/02/18/11/00/icon-7797704_640.png";
-                                  }}
-                                />
-                              ) : (
-                                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                  <User className="h-5 w-5 text-gray-500" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="ml-3">
-                              <div className="text-sm w-20 font-medium text-gray-900 truncate leading-tight">
-                                {userDisplayName}
-                              </div>
-                              <div className="text-sm w-20 text-gray-500 truncate leading-tight">
-                                {productUser?.email || "No email"}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(product.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => setDetailProduct(product)}
-                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 hover:scale-105 active:scale-95"
-                            >
-                              <svg
-                                className="w-4 h-4 mr-1"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                />
-                              </svg>
-                              View Details
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              disabled={deletingId === product.id}
-                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-all duration-200 hover:scale-105 active:scale-95"
-                            >
-                              {deletingId === product.id ? (
-                                <>
-                                  <svg
-                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
+                              <div className="flex-shrink-0 h-12 w-12">
+                                {product.images && product.images[0] ? (
+                                  <motion.img
+                                    whileHover={{ scale: 1.1 }}
+                                    className="h-12 w-12 rounded-lg object-cover"
+                                    src={product.images[0]}
+                                    alt={product.name}
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src =
+                                        "https://via.placeholder.com/48x48?text=No+Image";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
+                                    <svg
+                                      className="h-6 w-6 text-gray-400"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
                                       stroke="currentColor"
-                                      strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                  </svg>
-                                  Deleting...
-                                </>
-                              ) : (
-                                <>
-                                  <svg
-                                    className="w-4 h-4 mr-1"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                      />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {product.name}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {product.unit}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <motion.span
+                              whileHover={{ scale: 1.1 }}
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                product.category === "ផ្លែឈើ"
+                                  ? "bg-green-100 text-green-800"
+                                  : product.category === "បន្លែ"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : product.category === "ផ្សេងៗ"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {product.category}
+                            </motion.span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {formatPrice(product.price)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex items-center">
+                                {[...Array(5)].map((_, i) => (
+                                  <motion.svg
+                                    key={i}
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className={`h-4 w-4 ${
+                                      i < Math.floor(product.rating)
+                                        ? "text-yellow-400"
+                                        : "text-gray-300"
+                                    }`}
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
                                   >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
-                                  Delete
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </motion.svg>
+                                ))}
+                              </div>
+                              <span className="ml-1 text-sm text-gray-600">
+                                {product.rating.toFixed(1)}
+                              </span>
+                              <span className="ml-2 text-xs text-gray-500">
+                                ({product.review_count} reviews)
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0">
+                                {usersLoading ? (
+                                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <div className="animate-pulse h-5 w-5 bg-gray-300 rounded"></div>
+                                  </div>
+                                ) : productUser?.profileImageUrl ? (
+                                  <motion.img
+                                    whileHover={{ scale: 1.1 }}
+                                    src={productUser.profileImageUrl}
+                                    alt="Profile"
+                                    className="h-10 w-10 rounded-full object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src =
+                                        "https://cdn.pixabay.com/photo/2023/02/18/11/00/icon-7797704_640.png";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                    <User className="h-5 w-5 text-gray-500" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="ml-3">
+                                <div className="text-sm w-20 font-medium text-gray-900 truncate leading-tight">
+                                  {userDisplayName}
+                                </div>
+                                <div className="text-sm w-20 text-gray-500 truncate leading-tight">
+                                  {productUser?.email || "No email"}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(product.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setDetailProduct(product)}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                              >
+                                <svg
+                                  className="w-4 h-4 mr-1"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                  />
+                                </svg>
+                                View Details
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleDelete(product.id)}
+                                disabled={deletingId === product.id}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-all duration-200"
+                              >
+                                {deletingId === product.id ? (
+                                  <>
+                                    <svg
+                                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      ></circle>
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                      ></path>
+                                    </svg>
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4 mr-1"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                    Delete
+                                  </>
+                                )}
+                              </motion.button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </AnimatePresence>
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-                  Showing{" "}
-                  <span className="font-medium">
-                    {(currentPage - 1) * itemsPerPage + 1}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-medium">
-                    {Math.min(
-                      currentPage * itemsPerPage,
-                      filteredAndSortedProducts.length
-                    )}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-medium">
-                    {filteredAndSortedProducts.length}
-                  </span>{" "}
-                  products
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    First
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Previous
-                  </button>
-
-                  {/* Page numbers */}
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 text-sm border rounded-md ${
-                          currentPage === pageNum
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                        }`}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="px-4 py-4 border-t border-gray-200"
+              >
+                {/* Mobile: Simple navigation */}
+                <div className="sm:hidden flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex space-x-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                    >
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Next
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Last
-                  </button>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      Prev
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                    >
+                      Next
+                      <svg
+                        className="w-4 h-4 ml-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+                  </div>
                 </div>
-              </div>
+
+                {/* Desktop: Full pagination */}
+                <div className="hidden sm:flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                  <div className="text-sm text-gray-700">
+                    Showing{" "}
+                    <span className="font-semibold">
+                      {(currentPage - 1) * itemsPerPage + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-semibold">
+                      {Math.min(
+                        currentPage * itemsPerPage,
+                        filteredAndSortedProducts.length
+                      )}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold">
+                      {filteredAndSortedProducts.length}
+                    </span>{" "}
+                    products
+                  </div>
+
+                  <div className="flex items-center space-x-1 lg:space-x-2">
+                    {/* First Page Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
+                      title="First Page"
+                    >
+                      <svg
+                        className="text-gray-700 w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                        />
+                      </svg>
+                    </motion.button>
+
+                    {/* Previous Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                    >
+                      <svg
+                        className="text-gray-700 w-4 h-4 mr-1 hidden sm:inline"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      <span className="sm:inline text-gray-700">Previous</span>
+                    </motion.button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {/* Show first page */}
+                      {currentPage > 3 && (
+                        <>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setCurrentPage(1)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                          >
+                            1
+                          </motion.button>
+                          {currentPage > 4 && (
+                            <span className="px-2 text-gray-500">...</span>
+                          )}
+                        </>
+                      )}
+
+                      {/* Show surrounding pages */}
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+
+                          if (pageNum > 0 && pageNum <= totalPages) {
+                            return (
+                              <motion.button
+                                key={pageNum}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`px-3 py-1.5 text-sm border rounded-md min-w-[2.5rem] ${
+                                  currentPage === pageNum
+                                    ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                                }`}
+                              >
+                                {pageNum}
+                              </motion.button>
+                            );
+                          }
+                          return null;
+                        }
+                      )}
+
+                      {/* Show last page */}
+                      {currentPage < totalPages - 2 && (
+                        <>
+                          {currentPage < totalPages - 3 && (
+                            <span className="px-2 text-gray-500">...</span>
+                          )}
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                          >
+                            {totalPages}
+                          </motion.button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Next Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                    >
+                      <span className="sm:inline text-gray-700">Next</span>
+                      <svg
+                        className="text-gray-700 w-4 h-4 ml-1 hidden sm:inline"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+
+                    {/* Last Page Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
+                      title="Last Page"
+                    >
+                      <svg
+                        className="text-gray-700 w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+                  </div>
+                </div>
+
+                {/* Mobile page indicator */}
+                <div className="sm:hidden flex justify-center mt-3">
+                  <div className="flex space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      if (pageNum > 0 && pageNum <= totalPages) {
+                        return (
+                          <motion.div
+                            key={pageNum}
+                            className={`w-2 h-2 rounded-full ${
+                              currentPage === pageNum
+                                ? "bg-blue-600"
+                                : "bg-gray-300"
+                            }`}
+                            animate={{
+                              scale: currentPage === pageNum ? 1.2 : 1,
+                            }}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                </div>
+              </motion.div>
             )}
           </>
         )}
