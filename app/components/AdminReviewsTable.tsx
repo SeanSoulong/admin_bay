@@ -5,7 +5,7 @@ import { Review, Product } from "../types";
 import { getDatabase, ref, get } from "firebase/database";
 import { motion, AnimatePresence } from "framer-motion";
 import ReviewDetailModal from "./ReviewDetailModal";
-
+//test
 interface AdminReviewsTableProps {
   reviews: Review[];
   onDelete: (id: string) => Promise<void>;
