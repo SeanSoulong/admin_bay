@@ -251,7 +251,7 @@ export default function AdminDashboardClient({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Kantumruy_Pro']">
+    <div className="min-h-screen bg-dotted font-['Kantumruy_Pro']">
       {/* Header */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
