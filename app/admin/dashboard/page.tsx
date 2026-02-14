@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import {
   getProducts,
   getReviews,
@@ -7,14 +10,12 @@ import AdminDashboardClient from "../../components/AdminDashboardClient";
 
 export default async function AdminDashboardPage() {
   try {
-    // Fetch all data on the server in parallel
     const [products, reviews, learningCards] = await Promise.all([
       getProducts(),
       getReviews(),
       getLearningCards(),
     ]);
 
-    // Calculate stats on the server
     const totalRating = products.reduce(
       (sum, product) => sum + (product.rating || 0),
       0
@@ -40,7 +41,6 @@ export default async function AdminDashboardPage() {
   } catch (error) {
     console.error("Error in dashboard page:", error);
 
-    // Fallback to empty data
     return (
       <AdminDashboardClient
         initialProducts={[]}
