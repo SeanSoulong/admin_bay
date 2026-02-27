@@ -121,7 +121,7 @@ export default function ProductDetailModal({
       case "សម្ភារៈ":
         return "bg-yellow-100 text-yellow-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-yellow-100 text-yellow-800";
     }
   };
 

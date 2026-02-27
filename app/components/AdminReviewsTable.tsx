@@ -538,7 +538,7 @@ export default function AdminReviewsTable({
                 </svg>
                 <motion.input
                   type="text"
-                  placeholder="Search reviews, users, or products..."
+                  placeholder="Search reviews, users, or item IDs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="text-[#0D1B2A] block sm:text-sm px-3 py-2 border border-[#D1D5DB] 

@@ -23,7 +23,6 @@ export const getDatabaseInstance = () => {
   return getDatabase(app);
 };
 
-// Database operations
 export const databaseService = {
   // Products
   async getProducts(): Promise<Product[]> {
@@ -90,10 +89,71 @@ export const databaseService = {
       updatedAt: Date.now(),
       rating: data.rating || 0,
       review_count: data.review_count || 0,
+
+      // ✅ default visibility/moderation
+      visibility: data.visibility || "public",
+      moderation: data.moderation || { status: "clean" },
     };
 
     await set(newProductRef, productData);
     return newProductRef.key!;
+  },
+
+  // ✅ NEW: warn product (hide + notify + expires in 7 days)
+  async warnProduct(
+    productId: string,
+    payload: { userId: string; adminId: string; message: string }
+  ): Promise<void> {
+    const db = getDatabaseInstance();
+    const now = Date.now();
+    const expiresAt = now + 168 * 60 * 60 * 1000; // 7 days
+
+    const productRef = ref(db, `${dbPaths.marketplace}/${productId}`);
+    const snap = await get(productRef);
+    if (!snap.exists()) throw new Error("Product not found");
+
+    await update(productRef, {
+      visibility: "hidden",
+      moderation: {
+        status: "warned",
+        warnedAt: now,
+        expiresAt,
+        warnedBy: payload.adminId,
+        warningMessage: payload.message,
+      },
+      updatedAt: now,
+    });
+
+    // notify user
+    const notifRoot = ref(db, `user_notifications/${payload.userId}`);
+    const notifRef = push(notifRoot);
+
+    await set(notifRef, {
+      type: "MARKETPLACE_WARNING",
+      productId,
+      message: payload.message,
+      createdAt: now,
+      read: false,
+    });
+  },
+
+  // ✅ NEW: resolve product (public again)
+  async resolveProduct(productId: string): Promise<void> {
+    const db = getDatabaseInstance();
+    const now = Date.now();
+
+    const productRef = ref(db, `${dbPaths.marketplace}/${productId}`);
+    const snap = await get(productRef);
+    if (!snap.exists()) throw new Error("Product not found");
+
+    await update(productRef, {
+      visibility: "public",
+      moderation: {
+        status: "clean",
+        resolvedAt: now,
+      },
+      updatedAt: now,
+    });
   },
 
   // Reviews
@@ -191,17 +251,12 @@ export const databaseService = {
     return card;
   },
 
-  async updateLearningCard(
-    uuid: string,
-    data: Partial<LearningCard>
-  ): Promise<void> {
+  async updateLearningCard(uuid: string, data: Partial<LearningCard>) {
     const db = getDatabaseInstance();
     const cardRef = ref(db, `${dbPaths.learningHub}/cards/${uuid}`);
     const snapshot = await get(cardRef);
 
-    if (!snapshot.exists()) {
-      throw new Error(`Card with UUID ${uuid} not found`);
-    }
+    if (!snapshot.exists()) throw new Error(`Card with UUID ${uuid} not found`);
 
     const currentData = snapshot.val();
     await update(cardRef, { ...currentData, ...data });
@@ -211,9 +266,25 @@ export const databaseService = {
     const db = getDatabaseInstance();
     const cardRef = ref(db, `${dbPaths.learningHub}/cards/${uuid}`);
     await remove(cardRef);
-
-    // Clean up saved cards
     await this.cleanupSavedCards(uuid);
+  },
+  // ✅ NEW: delete warning (restore product + clean moderation)
+  async deleteProductWarning(productId: string): Promise<void> {
+    const db = getDatabaseInstance();
+    const now = Date.now();
+
+    const productRef = ref(db, `${dbPaths.marketplace}/${productId}`);
+    const snap = await get(productRef);
+    if (!snap.exists()) throw new Error("Product not found");
+
+    await update(productRef, {
+      visibility: "visible", // ✅ matches your normal products in DB
+      moderation: {
+        status: "clean",
+        resolvedAt: now,
+      },
+      updatedAt: now,
+    });
   },
 
   async cleanupSavedCards(uuid: string): Promise<void> {
@@ -224,22 +295,22 @@ export const databaseService = {
     if (!savedSnapshot.exists()) return;
 
     const savedData = savedSnapshot.val();
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updates: Record<string, any> = {};
+    const updatesObj: Record<string, any> = {};
 
     Object.keys(savedData).forEach((userId) => {
       if (savedData[userId] && savedData[userId][uuid]) {
-        updates[`${dbPaths.learningHub}/user_saved_cards/${userId}/${uuid}`] =
-          null;
+        updatesObj[
+          `${dbPaths.learningHub}/user_saved_cards/${userId}/${uuid}`
+        ] = null;
       }
     });
 
-    if (Object.keys(updates).length > 0) {
-      await update(ref(db), updates);
+    if (Object.keys(updatesObj).length > 0) {
+      await update(ref(db), updatesObj);
     }
   },
 };
 
-// For backward compatibility
+// Backward compatibility (your code uses firestoreService name)
 export const firestoreService = databaseService;
