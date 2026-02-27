@@ -418,7 +418,7 @@ export default function ReviewDetailModal({
                               <div className="pt-3 border-t border-gray-200">
                                 <div className="flex items-center justify-between">
                                   <p className="text-xs text-gray-500">
-                                    Product ID
+                                    Item ID
                                   </p>
                                   <code className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-700 font-mono">
                                     {review.itemId}

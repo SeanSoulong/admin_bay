@@ -1,3 +1,5 @@
+// ✅ src/types.ts  (FULL COPY-PASTE)
+
 export interface Product {
   id: string;
   itemId?: string;
@@ -12,6 +14,17 @@ export interface Product {
   userId: string;
   createdAt: number;
   updatedAt: number;
+
+  // ✅ NEW: moderation + visibility
+  visibility?: "public" | "hidden";
+  moderation?: {
+    status?: "clean" | "warned";
+    warnedAt?: number;
+    expiresAt?: number;
+    warnedBy?: string;
+    warningMessage?: string;
+    resolvedAt?: number;
+  };
 }
 
 export interface Review {
@@ -53,7 +66,6 @@ export interface LearningCategory {
   [key: string]: string;
 }
 
-// Props for server components
 export interface DashboardPageProps {
   initialProducts: Product[];
   initialReviews: Review[];

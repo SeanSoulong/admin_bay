@@ -30,14 +30,12 @@ export default function AdminDashboardClient({
   const [stats, setStats] = useState(initialStats);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Redirect if not admin
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
       router.push("/admin/login");
     }
   }, [user, isAdmin, authLoading, router]);
 
-  // Close mobile menu on resize
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -48,7 +46,6 @@ export default function AdminDashboardClient({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Refresh data function
   const refreshData = useCallback(async () => {
     if (!isAdmin) return;
 
@@ -79,7 +76,6 @@ export default function AdminDashboardClient({
         totalLearningCards: cardsData.length,
         avgRating: parseFloat(avgRating.toFixed(1)),
       });
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Error fetching data:", err);
@@ -94,7 +90,6 @@ export default function AdminDashboardClient({
       await firestoreService.deleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
       await refreshData();
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
@@ -104,44 +99,32 @@ export default function AdminDashboardClient({
 
   const handleDeleteReview = async (id: string) => {
     try {
-      // First get the review details
       const reviewToDelete = reviews.find((r) => r.id === id);
-      if (!reviewToDelete) {
-        throw new Error("Review not found");
-      }
+      if (!reviewToDelete) throw new Error("Review not found");
 
-      // Get the product that this review belongs to
       const product = products.find(
         (p) =>
           p.itemId === reviewToDelete.itemId || p.id === reviewToDelete.itemId
       );
+      if (!product) throw new Error("Product not found for this review");
 
-      if (!product) {
-        throw new Error("Product not found for this review");
-      }
-
-      // Calculate new review count and rating
       const newReviewCount = Math.max(0, product.review_count - 1);
       let newRating = 0;
 
       if (newReviewCount > 0) {
-        // Calculate new average: (old_total - deleted_rating) / new_count
         const oldTotalRating = product.rating * product.review_count;
         const newTotalRating = oldTotalRating - reviewToDelete.rating;
         newRating = parseFloat((newTotalRating / newReviewCount).toFixed(1));
       }
 
-      // Delete the review from the database
       await firestoreService.deleteReview(id);
 
-      // Update the product in the database
       await firestoreService.updateProduct(product.id, {
         review_count: newReviewCount,
         rating: newRating,
         updatedAt: Date.now(),
       });
 
-      // Update local state
       setReviews((prev) => prev.filter((r) => r.id !== id));
       setProducts((prev) =>
         prev.map((p) =>
@@ -156,13 +139,11 @@ export default function AdminDashboardClient({
         )
       );
 
-      // Update stats
       setStats((prev) => ({
         ...prev,
         totalReviews: prev.totalReviews - 1,
         avgRating: prev.avgRating,
       }));
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
@@ -175,7 +156,6 @@ export default function AdminDashboardClient({
       await firestoreService.deleteLearningCard(uuid);
       setLearningCards((prev) => prev.filter((c) => c.uuid !== uuid));
       await refreshData();
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
@@ -191,7 +171,6 @@ export default function AdminDashboardClient({
         prev.map((c) => (c.uuid === uuid ? { ...c, ...updates } : c))
       );
       await refreshData();
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Update error:", err);
@@ -207,7 +186,6 @@ export default function AdminDashboardClient({
       setLearningCards((prev) => [newCard, ...prev]);
       await refreshData();
       return newCard;
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Create error:", err);
@@ -246,9 +224,7 @@ export default function AdminDashboardClient({
     );
   }
 
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-dotted font-['Kantumruy_Pro']">
@@ -613,6 +589,7 @@ export default function AdminDashboardClient({
                 products={products}
                 onDelete={handleDeleteProduct}
                 loading={loading}
+                adminId={user?.uid || ""} // ✅ NEW
               />
             ) : activeTab === "reviews" ? (
               <AdminReviewsTable

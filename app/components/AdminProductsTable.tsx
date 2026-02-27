@@ -6,12 +6,17 @@ import ProductDetailModal from "./ProductDetailModal";
 import { User } from "lucide-react";
 import { getDatabase, ref, get } from "firebase/database";
 import { motion, AnimatePresence } from "framer-motion";
+import { firestoreService } from "../lib/firebase";
+import ProductWarningModal from "./ProductWarningModal";
 
 interface AdminProductsTableProps {
   products: Product[];
   onDelete: (id: string) => Promise<void>;
   onUpdate?: (id: string, updates: Partial<Product>) => Promise<void>;
   loading: boolean;
+
+  // ✅ NEW
+  adminId: string;
 }
 
 interface UserData {
@@ -124,43 +129,19 @@ const ProductRowSkeleton = () => {
   );
 };
 
-// Stats Skeleton
-const StatsSkeleton = () => {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 mb-6">
-      {[...Array(4)].map((_, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.1 }}
-          className="bg-white shadow rounded-lg overflow-hidden"
-        >
-          <div className="p-3 sm:p-4 md:p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6 bg-gray-200 rounded"></div>
-              </div>
-              <div className="ml-3 flex-1 min-w-0">
-                <dl>
-                  <dt className="h-3 bg-gray-200 rounded w-20 mb-2"></dt>
-                  <dd className="h-6 bg-gray-200 rounded w-12"></dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      ))}
-    </div>
-  );
-};
-
 export default function AdminProductsTable({
   products,
   onDelete,
   onUpdate,
   loading,
+  adminId,
 }: AdminProductsTableProps) {
+  // ✅ Local UI state so updates show instantly (no refresh)
+  const [productsUI, setProductsUI] = useState<Product[]>(products);
+  useEffect(() => {
+    setProductsUI(products);
+  }, [products]);
+
   const [userData, setUserData] = useState<UserData>({});
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -168,9 +149,12 @@ export default function AdminProductsTable({
   const [operationType, setOperationType] = useState<"delete" | "update">(
     "delete"
   );
-  const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // New state for sorting and pagination
+  // ✅ warning modal states
+  const [warningProduct, setWarningProduct] = useState<Product | null>(null);
+  const [sendingWarning, setSendingWarning] = useState(false);
+
+  // sorting/pagination/search
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -179,34 +163,27 @@ export default function AdminProductsTable({
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  // Get unique user IDs from products
   const uniqueUserIds = useMemo(
     () =>
-      [...new Set(products.map((p) => p.userId).filter(Boolean))] as string[],
-    [products]
+      [...new Set(productsUI.map((p) => p.userId).filter(Boolean))] as string[],
+    [productsUI]
   );
 
-  // Fetch user data using custom hook
   const { userData: fetchedUserData, loading: usersLoading } =
     useUserData(uniqueUserIds);
 
-  // Update userData state when fetchedUserData changes
   useEffect(() => {
     setUserData(fetchedUserData);
   }, [fetchedUserData]);
 
-  // Debounce search term
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, categoryFilter, products]);
+  }, [debouncedSearchTerm, categoryFilter, productsUI]);
 
   const formatPrice = (price: string | number) => {
     const numPrice = typeof price === "string" ? parseFloat(price) : price;
@@ -219,24 +196,10 @@ export default function AdminProductsTable({
       .replace("KHR", "៛");
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("km-KH", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const showSuccess = (message: string, type: "delete" | "update") => {
     setSuccessMessage(message);
     setOperationType(type);
-
-    // Auto hide after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
+    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
   const handleDelete = async (id: string) => {
@@ -244,6 +207,10 @@ export default function AdminProductsTable({
       setDeletingId(id);
       try {
         await onDelete(id);
+
+        // ✅ update UI instantly
+        setProductsUI((prev) => prev.filter((p) => p.id !== id));
+
         showSuccess("Product deleted successfully!", "delete");
       } catch (error) {
         console.error("Delete error:", error);
@@ -254,47 +221,48 @@ export default function AdminProductsTable({
     }
   };
 
-  // Function to get user display name
   const getUserDisplayName = useCallback(
     (userId: string) => {
       const user = userData[userId];
-      if (!user) {
-        return usersLoading ? "Loading..." : "Unknown User";
-      }
-      if (user.first_name && user.last_name) {
+      if (!user) return usersLoading ? "Loading..." : "Unknown User";
+      if (user.first_name && user.last_name)
         return `${user.first_name} ${user.last_name}`;
-      }
-      if (user.first_name) {
-        return user.first_name;
-      }
-      if (user.email) {
-        return user.email.split("@")[0];
-      }
+      if (user.first_name) return user.first_name;
+      if (user.email) return user.email.split("@")[0];
       return "User";
     },
     [userData, usersLoading]
   );
 
-  // Handle sorting
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
+    if (sortField === field)
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
+    else {
       setSortField(field);
       setSortDirection("desc");
     }
   };
 
-  // Get unique categories
   const categories = useMemo(() => {
-    const uniqueCats = Array.from(new Set(products.map((p) => p.category)));
+    const uniqueCats = Array.from(new Set(productsUI.map((p) => p.category)));
     return ["all", ...uniqueCats];
-  }, [products]);
+  }, [productsUI]);
 
-  // Filter, search, and sort products
+  // ✅ match your DB: visibility "hidden" = warned, visibility "visible" = normal
+  const isWarnedProduct = (p: Product) =>
+    (p.visibility ?? "visible") === "hidden" &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p as any)?.moderation?.status === "warned";
+
+  // ✅ your DB warning text field: moderation.warningMessage
+  const getWarnMessage = (p: Product) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const m = (p as any)?.moderation;
+    return m?.warningMessage || "";
+  };
+
   const filteredAndSortedProducts = useMemo(() => {
-    // Filter by search term and category
-    const result = products.filter((product) => {
+    const result = productsUI.filter((product) => {
       const searchLower = debouncedSearchTerm.toLowerCase();
       const matchesSearch =
         !debouncedSearchTerm ||
@@ -304,11 +272,9 @@ export default function AdminProductsTable({
 
       const matchesCategory =
         categoryFilter === "all" || product.category === categoryFilter;
-
       return matchesSearch && matchesCategory;
     });
 
-    // Sorting
     result.sort((a, b) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let aValue: any, bValue: any;
@@ -321,14 +287,12 @@ export default function AdminProductsTable({
         bValue = b[sortField];
       }
 
-      // Handle different data types
       if (typeof aValue === "string" && typeof bValue === "string") {
         return sortDirection === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
 
-      // Handle numbers (price, rating, review_count)
       if (sortField === "price") {
         const aNum = typeof aValue === "string" ? parseFloat(aValue) : aValue;
         const bNum = typeof bValue === "string" ? parseFloat(bValue) : bValue;
@@ -339,22 +303,18 @@ export default function AdminProductsTable({
         return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
       }
 
-      // Handle dates
       if (sortField === "createdAt" || sortField === "updatedAt") {
         return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
       }
 
-      // Default string comparison
-      if (sortDirection === "asc") {
+      if (sortDirection === "asc")
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
     });
 
     return result;
   }, [
-    products,
+    productsUI,
     debouncedSearchTerm,
     categoryFilter,
     sortField,
@@ -362,34 +322,145 @@ export default function AdminProductsTable({
     getUserDisplayName,
   ]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
   const paginatedProducts = filteredAndSortedProducts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Get stats
-  const stats = useMemo(() => {
-    const total = filteredAndSortedProducts.length;
-    const totalPrice = filteredAndSortedProducts.reduce((sum, p) => {
-      const price = typeof p.price === "string" ? parseFloat(p.price) : p.price;
-      return sum + price;
-    }, 0);
-    const avgPrice = total > 0 ? totalPrice / total : 0;
-    const avgRating =
-      total > 0
-        ? filteredAndSortedProducts.reduce((sum, p) => sum + p.rating, 0) /
-          total
-        : 0;
+  // ✅ warn/edit handler
+  const handleSendWarning = async (productId: string, reason: string) => {
+    if (!adminId) {
+      alert("Missing adminId");
+      return;
+    }
 
-    return { total, avgPrice, avgRating };
-  }, [filteredAndSortedProducts]);
+    const product = productsUI.find((p) => p.id === productId);
+    if (!product?.userId) {
+      alert("Product user not found");
+      return;
+    }
+
+    setSendingWarning(true);
+    try {
+      await firestoreService.warnProduct(productId, {
+        userId: product.userId,
+        adminId,
+        message: reason,
+      });
+
+      const now = Date.now();
+      const expiresAt = now + 168 * 60 * 60 * 1000;
+
+      // ✅ update UI instantly
+      setProductsUI((prev) =>
+        prev.map((p) => {
+          if (p.id !== productId) return p;
+          return {
+            ...p,
+            visibility: "hidden",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            moderation: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ...(p as any).moderation,
+              status: "warned",
+              warnedAt: now,
+              expiresAt,
+              warnedBy: adminId,
+              warningMessage: reason,
+            },
+            updatedAt: now,
+          } as Product;
+        })
+      );
+
+      // optional callback to parent
+      try {
+        await onUpdate?.(productId, {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          visibility: "hidden" as any,
+          moderation: {
+            status: "warned",
+            warnedAt: now,
+            expiresAt,
+            warnedBy: adminId,
+            warningMessage: reason,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+          updatedAt: now,
+        });
+      } catch {}
+
+      showSuccess(
+        isWarnedProduct(product)
+          ? "Warning updated successfully!"
+          : "Warning sent. Product hidden for 7 days.",
+        "update"
+      );
+
+      setWarningProduct(null);
+    } catch (err) {
+      console.error("Warn error:", err);
+      alert("Failed to send warning");
+      throw err;
+    } finally {
+      setSendingWarning(false);
+    }
+  };
+
+  // ✅ delete warning handler
+  const handleDeleteWarning = async (productId: string) => {
+    const ok = window.confirm("Delete this warning and restore product?");
+    if (!ok) return;
+
+    setSendingWarning(true);
+    try {
+      await firestoreService.deleteProductWarning(productId);
+
+      const now = Date.now();
+
+      // ✅ update UI instantly
+      setProductsUI((prev) =>
+        prev.map((p) => {
+          if (p.id !== productId) return p;
+          return {
+            ...p,
+            visibility: "visible",
+
+            moderation: {
+              status: "clean",
+              resolvedAt: now,
+            },
+            updatedAt: now,
+          } as unknown as Product;
+        })
+      );
+
+      // optional callback to parent
+      try {
+        await onUpdate?.(productId, {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          visibility: "visible" as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          moderation: { status: "clean", resolvedAt: now } as any,
+          updatedAt: now,
+        });
+      } catch {}
+
+      showSuccess("Warning deleted. Product restored.", "update");
+      setWarningProduct(null);
+    } catch (err) {
+      console.error("Delete warning error:", err);
+      alert("Failed to delete warning");
+      throw err;
+    } finally {
+      setSendingWarning(false);
+    }
+  };
 
   if (loading) {
     return (
       <div className="bg-white shadow-md rounded-lg overflow-hidden font-['Kantumruy_Pro']">
-        {/* Header Skeleton */}
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
@@ -400,7 +471,6 @@ export default function AdminProductsTable({
           </div>
         </div>
 
-        {/* Table Skeleton */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -432,7 +502,7 @@ export default function AdminProductsTable({
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-4 right-4 z-50 animate-slide-in font-['Kantumruy_Pro']"
+            className="fixed top-4 right-4 z-50 font-['Kantumruy_Pro']"
           >
             <div
               className={`rounded-lg shadow-lg p-4 flex items-center space-x-3 ${
@@ -446,35 +516,23 @@ export default function AdminProductsTable({
                   operationType === "delete" ? "bg-red-100" : "bg-green-100"
                 }`}
               >
-                {operationType === "delete" ? (
-                  <svg
-                    className="w-5 h-5 text-red-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-5 h-5 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                )}
+                <svg
+                  className={`w-5 h-5 ${
+                    operationType === "delete"
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">
@@ -524,7 +582,6 @@ export default function AdminProductsTable({
                 {filteredAndSortedProducts.length}
               </p>
             </div>
-
             <div className="text-sm text-gray-500">
               Last updated: {new Date().toLocaleDateString("km-KH")}
             </div>
@@ -582,10 +639,10 @@ export default function AdminProductsTable({
                 whileFocus={{ scale: 1.01 }}
               >
                 <option value={5}>5</option>
-                <option value={10}>10 </option>
-                <option value={25}>25 </option>
-                <option value={50}>50 </option>
-                <option value={100}>100 </option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
               </motion.select>
               <span className="text-sm text-gray-700">per page</span>
             </div>
@@ -598,19 +655,6 @@ export default function AdminProductsTable({
             animate={{ opacity: 1 }}
             className="text-center py-12"
           >
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-              />
-            </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">
               No products found
             </h3>
@@ -627,115 +671,81 @@ export default function AdminProductsTable({
                 <thead className="bg-gray-50">
                   <tr>
                     <th
-                      scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("name")}
                     >
-                      <motion.div
-                        className="flex items-center"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        Product
+                      <div className="flex items-center">
+                        Product{" "}
                         {sortField === "name" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </motion.div>
+                      </div>
                     </th>
+
                     <th
-                      scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("category")}
                     >
-                      <motion.div
-                        className="flex items-center"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        Category
+                      <div className="flex items-center">
+                        Category{" "}
                         {sortField === "category" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </motion.div>
+                      </div>
                     </th>
+
                     <th
-                      scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("price")}
                     >
-                      <motion.div
-                        className="flex items-center"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        Price
+                      <div className="flex items-center">
+                        Price{" "}
                         {sortField === "price" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </motion.div>
+                      </div>
                     </th>
+
                     <th
-                      scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("rating")}
                     >
-                      <motion.div
-                        className="flex items-center"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        Rating
+                      <div className="flex items-center">
+                        Rating{" "}
                         {sortField === "rating" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </motion.div>
+                      </div>
                     </th>
+
                     <th
-                      scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort("userName")}
                     >
-                      <motion.div
-                        className="flex items-center"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        Posted By
+                      <div className="flex items-center">
+                        Posted By{" "}
                         {sortField === "userName" && (
                           <span className="ml-1">
                             {sortDirection === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </motion.div>
+                      </div>
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort("createdAt")}
-                    >
-                      <motion.div
-                        className="flex items-center"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        Created
-                        {sortField === "createdAt" && (
-                          <span className="ml-1">
-                            {sortDirection === "asc" ? "↑" : "↓"}
-                          </span>
-                        )}
-                      </motion.div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
+
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
+
                 <tbody className="bg-white divide-y divide-gray-200">
                   <AnimatePresence>
                     {paginatedProducts.map((product, index) => {
@@ -745,6 +755,8 @@ export default function AdminProductsTable({
                       const userDisplayName = getUserDisplayName(
                         product.userId
                       );
+
+                      const isWarned = isWarnedProduct(product);
 
                       return (
                         <motion.tr
@@ -789,9 +801,15 @@ export default function AdminProductsTable({
                                   </div>
                                 )}
                               </div>
+
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">
+                                <div className="text-sm font-medium text-gray-900 flex items-center">
                                   {product.name}
+                                  {isWarned && (
+                                    <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      Warning
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-sm text-gray-500">
                                   {product.unit}
@@ -799,6 +817,7 @@ export default function AdminProductsTable({
                               </div>
                             </div>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <motion.span
                               whileHover={{ scale: 1.1 }}
@@ -815,9 +834,11 @@ export default function AdminProductsTable({
                               {product.category}
                             </motion.span>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {formatPrice(product.price)}
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex items-center">
@@ -847,6 +868,7 @@ export default function AdminProductsTable({
                               </span>
                             </div>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0">
@@ -881,9 +903,7 @@ export default function AdminProductsTable({
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(product.createdAt)}
-                          </td>
+
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
                               <motion.button
@@ -892,27 +912,25 @@ export default function AdminProductsTable({
                                 onClick={() => setDetailProduct(product)}
                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                               >
-                                <svg
-                                  className="w-4 h-4 mr-1"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                  />
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                  />
-                                </svg>
                                 View Details
                               </motion.button>
+
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setWarningProduct(product)}
+                                className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white ${
+                                  isWarned
+                                    ? "bg-amber-700 hover:bg-amber-800"
+                                    : "bg-yellow-600 hover:bg-yellow-700"
+                                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200`}
+                                aria-label={`${
+                                  isWarned ? "Edit warning" : "Warn"
+                                } product: ${product.name}`}
+                              >
+                                {isWarned ? "Edit Warning" : "Warn"}
+                              </motion.button>
+
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
@@ -920,48 +938,9 @@ export default function AdminProductsTable({
                                 disabled={deletingId === product.id}
                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-all duration-200"
                               >
-                                {deletingId === product.id ? (
-                                  <>
-                                    <svg
-                                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                      ></circle>
-                                      <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                      ></path>
-                                    </svg>
-                                    Deleting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg
-                                      className="w-4 h-4 mr-1"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                      />
-                                    </svg>
-                                    Delete
-                                  </>
-                                )}
+                                {deletingId === product.id
+                                  ? "Deleting..."
+                                  : "Delete"}
                               </motion.button>
                             </div>
                           </td>
@@ -975,295 +954,58 @@ export default function AdminProductsTable({
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="px-4 py-4 border-t border-gray-200"
-              >
-                {/* Mobile: Simple navigation */}
-                <div className="sm:hidden flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Page {currentPage} of {totalPages}
-                  </div>
-                  <div className="flex space-x-2">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M15 19l-7-7 7-7"
-                        />
-                      </svg>
-                      Prev
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
-                    >
-                      Next
-                      <svg
-                        className="w-4 h-4 ml-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </motion.button>
-                  </div>
+              <div className="px-4 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
                 </div>
-
-                {/* Desktop: Full pagination */}
-                <div className="hidden sm:flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-                  <div className="text-sm text-gray-700">
-                    Showing{" "}
-                    <span className="font-semibold">
-                      {(currentPage - 1) * itemsPerPage + 1}
-                    </span>{" "}
-                    to{" "}
-                    <span className="font-semibold">
-                      {Math.min(
-                        currentPage * itemsPerPage,
-                        filteredAndSortedProducts.length
-                      )}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-semibold">
-                      {filteredAndSortedProducts.length}
-                    </span>{" "}
-                    products
-                  </div>
-
-                  <div className="flex items-center space-x-1 lg:space-x-2">
-                    {/* First Page Button */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                      className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
-                      title="First Page"
-                    >
-                      <svg
-                        className="text-gray-700 w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                        />
-                      </svg>
-                    </motion.button>
-
-                    {/* Previous Button */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
-                    >
-                      <svg
-                        className="text-gray-700 w-4 h-4 mr-1 hidden sm:inline"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M15 19l-7-7 7-7"
-                        />
-                      </svg>
-                      <span className="sm:inline text-gray-700">Previous</span>
-                    </motion.button>
-
-                    {/* Page Numbers */}
-                    <div className="flex items-center space-x-1">
-                      {/* Show first page */}
-                      {currentPage > 3 && (
-                        <>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setCurrentPage(1)}
-                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-                          >
-                            1
-                          </motion.button>
-                          {currentPage > 4 && (
-                            <span className="px-2 text-gray-500">...</span>
-                          )}
-                        </>
-                      )}
-
-                      {/* Show surrounding pages */}
-                      {Array.from(
-                        { length: Math.min(5, totalPages) },
-                        (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNum = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNum = totalPages - 4 + i;
-                          } else {
-                            pageNum = currentPage - 2 + i;
-                          }
-
-                          if (pageNum > 0 && pageNum <= totalPages) {
-                            return (
-                              <motion.button
-                                key={pageNum}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => setCurrentPage(pageNum)}
-                                className={`px-3 py-1.5 text-sm border rounded-md min-w-[2.5rem] ${
-                                  currentPage === pageNum
-                                    ? "bg-blue-600 text-white border-blue-600 font-semibold"
-                                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                                }`}
-                              >
-                                {pageNum}
-                              </motion.button>
-                            );
-                          }
-                          return null;
-                        }
-                      )}
-
-                      {/* Show last page */}
-                      {currentPage < totalPages - 2 && (
-                        <>
-                          {currentPage < totalPages - 3 && (
-                            <span className="px-2 text-gray-500">...</span>
-                          )}
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setCurrentPage(totalPages)}
-                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-                          >
-                            {totalPages}
-                          </motion.button>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Next Button */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
-                    >
-                      <span className="sm:inline text-gray-700">Next</span>
-                      <svg
-                        className="text-gray-700 w-4 h-4 ml-1 hidden sm:inline"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </motion.button>
-
-                    {/* Last Page Button */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
-                      className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
-                      title="Last Page"
-                    >
-                      <svg
-                        className="text-gray-700 w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                        />
-                      </svg>
-                    </motion.button>
-                  </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                  >
+                    Prev
+                  </button>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                  >
+                    Next
+                  </button>
                 </div>
-
-                {/* Mobile page indicator */}
-                <div className="sm:hidden flex justify-center mt-3">
-                  <div className="flex space-x-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      if (pageNum > 0 && pageNum <= totalPages) {
-                        return (
-                          <motion.div
-                            key={pageNum}
-                            className={`w-2 h-2 rounded-full ${
-                              currentPage === pageNum
-                                ? "bg-blue-600"
-                                : "bg-gray-300"
-                            }`}
-                            animate={{
-                              scale: currentPage === pageNum ? 1.2 : 1,
-                            }}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             )}
           </>
         )}
       </div>
 
+      {/* ✅ WARNING MODAL */}
+      {warningProduct &&
+        (() => {
+          // ✅ ensure modal always uses latest product (updated message)
+          const fresh =
+            productsUI.find((p) => p.id === warningProduct.id) ??
+            warningProduct;
+
+          return (
+            <ProductWarningModal
+              product={fresh}
+              isOpen={!!warningProduct}
+              onClose={() => setWarningProduct(null)}
+              onSendWarning={handleSendWarning}
+              initialReason={getWarnMessage(fresh)}
+              mode={isWarnedProduct(fresh) ? "edit" : "warn"}
+              onDeleteWarning={handleDeleteWarning}
+              canDeleteWarning={isWarnedProduct(fresh)}
+              isBusy={sendingWarning}
+            />
+          );
+        })()}
+
+      {/* Product Detail Modal */}
       {detailProduct && (
         <ProductDetailModal
           product={detailProduct}
