@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/error-boundaries */
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -5,15 +6,18 @@ import {
   getProducts,
   getReviews,
   getLearningCards,
+  getUsers, // Add this import
 } from "../../lib/data-service";
 import AdminDashboardClient from "../../components/AdminDashboardClient";
 
 export default async function AdminDashboardPage() {
   try {
-    const [products, reviews, learningCards] = await Promise.all([
+    // Fetch all data including users
+    const [products, reviews, learningCards, users] = await Promise.all([
       getProducts(),
       getReviews(),
       getLearningCards(),
+      getUsers(), // Add this
     ]);
 
     const totalRating = products.reduce(
@@ -26,15 +30,19 @@ export default async function AdminDashboardPage() {
       totalProducts: products.length,
       totalReviews: reviews.length,
       totalLearningCards: learningCards.length,
+      totalUsers: users.length, // Add this
       avgRating: parseFloat(avgRating.toFixed(1)),
     };
 
+    console.log("Server-side stats:", stats); // Debug log
+    console.log("Users fetched:", users.length); // Debug log
+
     return (
-      // eslint-disable-next-line react-hooks/error-boundaries
       <AdminDashboardClient
         initialProducts={products}
         initialReviews={reviews}
         initialLearningCards={learningCards}
+        initialUsers={users} // Add this
         initialStats={stats}
       />
     );
@@ -46,10 +54,12 @@ export default async function AdminDashboardPage() {
         initialProducts={[]}
         initialReviews={[]}
         initialLearningCards={[]}
+        initialUsers={[]} // Add this
         initialStats={{
           totalProducts: 0,
           totalReviews: 0,
           totalLearningCards: 0,
+          totalUsers: 0, // Add this
           avgRating: 0,
         }}
       />

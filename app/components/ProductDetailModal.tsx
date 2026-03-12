@@ -67,6 +67,7 @@ export default function ProductDetailModal({
     if (product.userId && isOpen) {
       fetchUserData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.userId, isOpen]);
 
   const fetchUserData = async () => {

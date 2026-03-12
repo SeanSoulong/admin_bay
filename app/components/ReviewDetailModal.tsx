@@ -6,14 +6,10 @@ import {
   X,
   User,
   Calendar,
-  Star,
   Package,
   MessageSquare,
-  ExternalLink,
   CheckCircle,
   AlertCircle,
-  ThumbsUp,
-  ThumbsDown,
 } from "lucide-react";
 import { Review, Product } from "../types";
 import { getDatabase, ref, get } from "firebase/database";
@@ -88,6 +84,7 @@ export default function ReviewDetailModal({
       // Check if review is reported (you can fetch this from your database)
       checkReportStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [review, product, isOpen]);
 
   const fetchUserData = async () => {
@@ -209,11 +206,11 @@ export default function ReviewDetailModal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-sm"
               onClick={onClose}
             />
 
-            <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto p-4 font-['Kantumruy_Pro']">
+            <div className="fixed inset-0 z-9999 flex items-start justify-center overflow-y-auto p-4 font-['Kantumruy_Pro']">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -246,7 +243,7 @@ export default function ReviewDetailModal({
                       {/* Left Column - Review Content */}
                       <div className="space-y-6">
                         {/* Review Header */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
+                        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
                           <div className="flex items-start justify-between">
                             <div>
                               <div className="flex items-center gap-2 mb-2">
@@ -305,7 +302,7 @@ export default function ReviewDetailModal({
                           </div>
                           <div className="bg-gray-50 rounded-lg p-4">
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0">
+                              <div className="shrink-0">
                                 <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                                   <MessageSquare className="h-4 w-4 text-blue-600" />
                                 </div>
@@ -465,8 +462,9 @@ export default function ReviewDetailModal({
                           ) : userData ? (
                             <div className="bg-gray-50 rounded-lg p-4 space-y-4">
                               <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0">
+                                <div className="shrink-0">
                                   {userData.profileImageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                       src={userData.profileImageUrl}
                                       alt="Profile"
@@ -477,7 +475,7 @@ export default function ReviewDetailModal({
                                       }}
                                     />
                                   ) : (
-                                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 border-2 border-white shadow-sm flex items-center justify-center">
+                                    <div className="h-12 w-12 rounded-full bg-linear-to-br from-blue-100 to-indigo-100 border-2 border-white shadow-sm flex items-center justify-center">
                                       <User className="h-6 w-6 text-blue-600" />
                                     </div>
                                   )}
@@ -563,7 +561,7 @@ export default function ReviewDetailModal({
                           <h3 className="text-sm font-medium text-gray-900 mb-3">
                             Review Statistics
                           </h3>
-                          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4">
+                          <div className="bg-linear-to-r from-indigo-50 to-purple-50 rounded-lg p-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div className="text-center">
                                 <div className="text-2xl font-bold text-indigo-600">
@@ -610,7 +608,7 @@ export default function ReviewDetailModal({
                       <div className="mt-6">
                         <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
                           <div className="flex items-start">
-                            <AlertCircle className="h-5 w-5 text-red-400 mr-3 flex-shrink-0" />
+                            <AlertCircle className="h-5 w-5 text-red-400 mr-3 shrink-0" />
                             <div>
                               <h4 className="text-sm font-medium text-red-800">
                                 Review Reported

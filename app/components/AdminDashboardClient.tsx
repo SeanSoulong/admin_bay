@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -7,28 +9,40 @@ import { adminSignOut, firestoreService } from "../lib/firebase";
 import AdminProductsTable from "./AdminProductsTable";
 import AdminReviewsTable from "./AdminReviewsTable";
 import LearningHubTable from "./LearningHubTable";
-import { DashboardPageProps, Product, Review } from "../types";
+import AdminUsersTable from "./AdminUsersTable";
+import { DashboardPageProps, Product, Review, User } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminDashboardClient({
   initialProducts,
   initialReviews,
   initialLearningCards,
+  initialUsers,
   initialStats,
 }: DashboardPageProps) {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "products" | "reviews" | "learninghub" | "Map" | "Comunity"
+    "products" | "reviews" | "learninghub" | "Map" | "Comunity" | "users"
   >("products");
+
+  // Initialize state with server-side data
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
   const [learningCards, setLearningCards] = useState(initialLearningCards);
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [stats, setStats] = useState(initialStats);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const [stats, setStats] = useState(initialStats);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Debug logs
+  useEffect(() => {
+    console.log("Initial users from server:", initialUsers.length);
+    console.log("Initial stats from server:", initialStats);
+  }, [initialUsers, initialStats]);
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
@@ -53,15 +67,32 @@ export default function AdminDashboardClient({
     setError("");
 
     try {
-      const [productsData, reviewsData, cardsData] = await Promise.all([
-        firestoreService.getProducts(),
-        firestoreService.getReviews(),
-        firestoreService.getLearningCards(),
-      ]);
+      const [productsData, reviewsData, cardsData, usersData] =
+        await Promise.all([
+          firestoreService.getProducts().catch((err) => {
+            console.error("Products fetch failed:", err);
+            return [];
+          }),
+          firestoreService.getReviews().catch((err) => {
+            console.error("Reviews fetch failed:", err);
+            return [];
+          }),
+          firestoreService.getLearningCards().catch((err) => {
+            console.error("Learning cards fetch failed:", err);
+            return [];
+          }),
+          firestoreService.getUsers().catch((err) => {
+            console.error("Users fetch failed:", err);
+            return [];
+          }),
+        ]);
+
+      console.log("Refreshed users:", usersData.length);
 
       setProducts(productsData);
       setReviews(reviewsData);
       setLearningCards(cardsData);
+      setUsers(usersData);
 
       const totalRating = productsData.reduce(
         (sum, product) => sum + (product.rating || 0),
@@ -70,13 +101,16 @@ export default function AdminDashboardClient({
       const avgRating =
         productsData.length > 0 ? totalRating / productsData.length : 0;
 
-      setStats({
+      const newStats = {
         totalProducts: productsData.length,
         totalReviews: reviewsData.length,
         totalLearningCards: cardsData.length,
+        totalUsers: usersData.length,
         avgRating: parseFloat(avgRating.toFixed(1)),
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      };
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      console.log("New stats:", newStats);
+      setStats(newStats);
     } catch (err: any) {
       console.error("Error fetching data:", err);
       setError("Failed to load data. Please try again.");
@@ -90,7 +124,6 @@ export default function AdminDashboardClient({
       await firestoreService.deleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
       await refreshData();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
       throw err;
@@ -142,9 +175,7 @@ export default function AdminDashboardClient({
       setStats((prev) => ({
         ...prev,
         totalReviews: prev.totalReviews - 1,
-        avgRating: prev.avgRating,
       }));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
       throw err;
@@ -156,14 +187,12 @@ export default function AdminDashboardClient({
       await firestoreService.deleteLearningCard(uuid);
       setLearningCards((prev) => prev.filter((c) => c.uuid !== uuid));
       await refreshData();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Delete error:", err);
       throw err;
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUpdateLearningCard = async (uuid: string, updates: any) => {
     try {
       await firestoreService.updateLearningCard(uuid, updates);
@@ -171,7 +200,6 @@ export default function AdminDashboardClient({
         prev.map((c) => (c.uuid === uuid ? { ...c, ...updates } : c))
       );
       await refreshData();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Update error:", err);
       alert(`Failed to update card: ${err.message}`);
@@ -179,16 +207,39 @@ export default function AdminDashboardClient({
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreateLearningCard = async (cardData: any) => {
     try {
       const newCard = await firestoreService.createLearningCard(cardData);
       setLearningCards((prev) => [newCard, ...prev]);
       await refreshData();
       return newCard;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error("Create error:", err);
+      throw err;
+    }
+  };
+
+  // User handlers
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await firestoreService.deleteUser(userId);
+      setUsers((prev) => prev.filter((u) => u.userId !== userId));
+      await refreshData();
+    } catch (err: any) {
+      console.error("Delete user error:", err);
+      throw err;
+    }
+  };
+
+  const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
+    try {
+      await firestoreService.updateUser(userId, updates);
+      setUsers((prev) =>
+        prev.map((u) => (u.userId === userId ? { ...u, ...updates } : u))
+      );
+      await refreshData();
+    } catch (err: any) {
+      console.error("Update user error:", err);
       throw err;
     }
   };
@@ -251,7 +302,7 @@ export default function AdminDashboardClient({
                 </h1>
               </div>
 
-              {/* Mobile menu button - visible on mobile and tablet */}
+              {/* Mobile menu button */}
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -282,7 +333,7 @@ export default function AdminDashboardClient({
                 </svg>
               </motion.button>
 
-              {/* Desktop Navigation - visible on md and up */}
+              {/* Desktop Navigation */}
               <nav className="hidden rounded-3xl border border-gray-200 bg-gray-50 p-1.5 md:ml-6 lg:ml-10 xl:ml-40 md:flex md:space-x-1 lg:space-x-2">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -323,6 +374,18 @@ export default function AdminDashboardClient({
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveTab("users")}
+                  className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                    activeTab === "users"
+                      ? "bg-purple-100 text-purple-700"
+                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
+                  Users
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setActiveTab("Map")}
                   className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
                     activeTab === "Map"
@@ -348,7 +411,7 @@ export default function AdminDashboardClient({
             </div>
             <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4">
               <div className="hidden text-[11px] sm:text-[12px] text-gray-600 md:block">
-                <span className="font-medium truncate max-w-[120px] md:max-w-[150px] lg:max-w-[180px]">
+                <span className="font-medium truncate max-w-30 md:max-w-37.5 lg:max-w-45">
                   {user?.email}
                 </span>
               </div>
@@ -376,7 +439,7 @@ export default function AdminDashboardClient({
             </div>
           </div>
 
-          {/* Mobile Navigation Menu - visible on md and below */}
+          {/* Mobile Navigation Menu */}
           <AnimatePresence>
             {isMobileMenuOpen && (
               <motion.div
@@ -392,6 +455,7 @@ export default function AdminDashboardClient({
                       { key: "products", label: "Products" },
                       { key: "reviews", label: "Reviews" },
                       { key: "learninghub", label: "Learning Hub" },
+                      { key: "users", label: "Users" },
                       { key: "Map", label: "Map" },
                       { key: "Comunity", label: "Community", colSpan: 2 },
                     ].map((item) => (
@@ -400,7 +464,6 @@ export default function AdminDashboardClient({
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           setActiveTab(item.key as any);
                           setIsMobileMenuOpen(false);
                         }}
@@ -410,6 +473,8 @@ export default function AdminDashboardClient({
                               ? "bg-blue-100 text-blue-700"
                               : item.key === "reviews"
                               ? "bg-red-100 text-red-700"
+                              : item.key === "users"
+                              ? "bg-purple-100 text-purple-700"
                               : "bg-[#CCFFFF] text-[#0A817F]"
                             : "bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                         } ${item.colSpan === 2 ? "col-span-2" : ""}`}
@@ -434,14 +499,14 @@ export default function AdminDashboardClient({
         </div>
       </motion.header>
 
-      {/* Stats - Optimized for tablet */}
+      {/* Stats */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
         className="max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 mt-4 sm:mt-5 md:mt-6"
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
           {[
             {
               icon: (
@@ -488,6 +553,19 @@ export default function AdminDashboardClient({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              ),
+              color: "text-purple-400",
+              title: "Total Users",
+              value: stats.totalUsers,
+            },
+            {
+              icon: (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
                   d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
                 />
               ),
@@ -506,7 +584,7 @@ export default function AdminDashboardClient({
             >
               <div className="p-3 sm:p-4 md:p-5">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <motion.svg
                       className={`h-5 w-5 sm:h-5 sm:w-5 md:h-6 md:w-6 ${stat.color}`}
                       fill="none"
@@ -555,7 +633,7 @@ export default function AdminDashboardClient({
               className="mb-4 sm:mb-5 md:mb-6 rounded-md bg-red-50 p-3 sm:p-4"
             >
               <div className="flex">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <svg
                     className="h-4 w-4 sm:h-5 sm:w-5 text-red-400"
                     viewBox="0 0 20 20"
@@ -589,7 +667,7 @@ export default function AdminDashboardClient({
                 products={products}
                 onDelete={handleDeleteProduct}
                 loading={loading}
-                adminId={user?.uid || ""} // ✅ NEW
+                adminId={user?.uid || ""}
               />
             ) : activeTab === "reviews" ? (
               <AdminReviewsTable
@@ -605,6 +683,14 @@ export default function AdminDashboardClient({
                 onUpdate={handleUpdateLearningCard}
                 onCreate={handleCreateLearningCard}
                 loading={loading}
+              />
+            ) : activeTab === "users" ? (
+              <AdminUsersTable
+                users={users}
+                onDelete={handleDeleteUser}
+                onUpdate={handleUpdateUser}
+                loading={loading}
+                adminId={user?.uid || ""}
               />
             ) : activeTab === "Map" ? (
               <div className="bg-white shadow rounded-lg p-4 md:p-6">
