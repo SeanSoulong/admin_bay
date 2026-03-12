@@ -84,7 +84,7 @@ const ProductRowSkeleton = () => {
     >
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
-          <div className="flex-shrink-0 h-12 w-12 bg-gray-200 rounded-lg"></div>
+          <div className="shrink-0 h-12 w-12 bg-gray-200 rounded-lg"></div>
           <div className="ml-4">
             <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
             <div className="h-3 bg-gray-200 rounded w-16"></div>
@@ -109,7 +109,7 @@ const ProductRowSkeleton = () => {
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
-          <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full"></div>
+          <div className="shrink-0 h-10 w-10 bg-gray-200 rounded-full"></div>
           <div className="ml-3">
             <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
             <div className="h-3 bg-gray-200 rounded w-16"></div>
@@ -359,7 +359,7 @@ export default function AdminProductsTable({
           return {
             ...p,
             visibility: "hidden",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             moderation: {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               ...(p as any).moderation,
@@ -507,12 +507,12 @@ export default function AdminProductsTable({
             <div
               className={`rounded-lg shadow-lg p-4 flex items-center space-x-3 ${
                 operationType === "delete"
-                  ? "bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500"
-                  : "bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500"
+                  ? "bg-linear-to-r from-red-50 to-red-100 border-l-4 border-red-500"
+                  : "bg-linear-to-r from-green-50 to-green-100 border-l-4 border-green-500"
               }`}
             >
               <div
-                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                   operationType === "delete" ? "bg-red-100" : "bg-green-100"
                 }`}
               >
@@ -771,7 +771,7 @@ export default function AdminProductsTable({
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className="flex-shrink-0 h-12 w-12">
+                              <div className="shrink-0 h-12 w-12">
                                 {product.images && product.images[0] ? (
                                   <motion.img
                                     whileHover={{ scale: 1.1 }}
@@ -871,7 +871,7 @@ export default function AdminProductsTable({
 
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className="flex-shrink-0">
+                              <div className="shrink-0">
                                 {usersLoading ? (
                                   <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
                                     <div className="animate-pulse h-5 w-5 bg-gray-300 rounded"></div>

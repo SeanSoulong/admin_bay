@@ -78,6 +78,7 @@ export default function ProductWarningModal({
       await onSendWarning(product.id, reason.trim());
       setReason("");
       onClose();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError("Failed to send warning. Please try again.");
     } finally {
@@ -97,6 +98,7 @@ export default function ProductWarningModal({
     try {
       await onDeleteWarning(product.id);
       onClose();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError("Failed to delete warning. Please try again.");
     } finally {
@@ -112,13 +114,13 @@ export default function ProductWarningModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-10000 bg-black/50 backdrop-blur-sm"
             onClick={() => {
               if (!busy) onClose();
             }}
           />
 
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-10000 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

@@ -1,5 +1,7 @@
+// lib/data-service.ts
+
 import { databaseService } from "./firebase";
-import { Product, Review, LearningCard } from "../types";
+import { Product, Review, LearningCard, User } from "../types";
 
 export async function getProducts(): Promise<Product[]> {
   try {
@@ -28,6 +30,17 @@ export async function getLearningCards(): Promise<LearningCard[]> {
   } catch (error) {
     console.error("Error fetching learning cards:", error);
     throw new Error("Failed to fetch learning cards");
+  }
+}
+
+export async function getUsers(): Promise<User[]> {
+  try {
+    // Use the new method that includes online status
+    const users = await databaseService.getUsersWithOnlineStatus();
+    return users || [];
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw new Error("Failed to fetch users");
   }
 }
 

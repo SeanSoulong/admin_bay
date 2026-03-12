@@ -1,4 +1,4 @@
-// ✅ src/types.ts  (FULL COPY-PASTE)
+// src/types.ts
 
 export interface Product {
   id: string;
@@ -14,8 +14,6 @@ export interface Product {
   userId: string;
   createdAt: number;
   updatedAt: number;
-
-  // ✅ NEW: moderation + visibility
   visibility?: "public" | "hidden";
   moderation?: {
     status?: "clean" | "warned";
@@ -39,11 +37,47 @@ export interface Review {
   stability?: number;
 }
 
-export interface UserData {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
+export interface User {
+  userId: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
+  role?: string;
+  profileImageUrl?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  lastLogin?: number;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  userVerified?: boolean;
+  online?: boolean; // From user object
+  point?: number;
+  deviceToken?: string;
+
+  // Moderation fields
+  moderation?: {
+    status?: "clean" | "warned" | "suspended" | "banned";
+    warnedAt?: number;
+    expiresAt?: number;
+    warnedBy?: string;
+    warningMessage?: string;
+    suspendedAt?: number;
+    suspendedUntil?: number;
+    suspendedBy?: string;
+    suspensionReason?: string;
+    bannedAt?: number;
+    bannedBy?: string;
+    banReason?: string;
+    resolvedAt?: number;
+  };
+}
+
+// Add this interface for online status
+export interface OnlineStatus {
+  [userId: string]: boolean;
 }
 
 export type ProductCategory = "ផ្លែឈើ" | "បន្លែ" | "ផ្សេងៗ" | "សម្ភារៈ";
@@ -62,18 +96,16 @@ export interface LearningCard {
   createdAt: string;
 }
 
-export interface LearningCategory {
-  [key: string]: string;
-}
-
 export interface DashboardPageProps {
   initialProducts: Product[];
   initialReviews: Review[];
   initialLearningCards: LearningCard[];
+  initialUsers: User[];
   initialStats: {
     totalProducts: number;
     totalReviews: number;
     totalLearningCards: number;
+    totalUsers: number;
     avgRating: number;
   };
 }
