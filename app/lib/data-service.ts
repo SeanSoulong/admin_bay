@@ -1,4 +1,6 @@
 // lib/data-service.ts
+import { ref, onValue, remove, update } from "firebase/database";
+import { Post } from "../types";
 
 import { databaseService } from "./firebase";
 import { Product, Review, LearningCard, User } from "../types";
@@ -85,3 +87,24 @@ export async function updateProduct(
     throw error;
   }
 }
+
+export function subscribePosts(callback: (posts: Post[]) => void) {
+  return databaseService.subscribePosts(callback);
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  return databaseService.deletePost(postId);
+}
+
+export async function hidePost(postId: string): Promise<void> {
+  return databaseService.hidePost(postId);
+}
+
+export async function warnPost(postId: string, payload: any): Promise<void> {
+  return databaseService.warnPost(postId, payload);
+}
+
+export function subscribeComments(postId: string, callback: (comments: any[]) => void) {
+  return databaseService.subscribeComments(postId, callback);
+}
+

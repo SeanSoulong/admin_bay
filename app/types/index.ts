@@ -109,3 +109,78 @@ export interface DashboardPageProps {
     avgRating: number;
   };
 }
+
+export interface Post {
+    id: string;
+    content: string;
+    title?: string;
+    imageUrls?: string[];
+    userId: string;
+    timestamp: string;
+
+    likedBy?: Record<string, boolean>;
+    savedBy?: Record<string, boolean>;
+
+    likesCount: number;
+    savesCount: number;
+    commentsCount: number;
+
+    username?: string;
+    avatar?: string;
+    visibility?: string;
+    moderation?: {
+        status?: string;
+        warnedAt?: number;
+        warnedBy?: string;
+        message?: string;
+    };
+}
+
+export interface Comment {
+    id: string;
+    postId: string;
+
+    text: string;
+    userId: string;
+    timestamp: string;
+
+    username?: string;
+    avatar?: string;
+
+    createdAt?: number;
+    commentId?: string;
+    parentCommentId?: string;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  category: "Market" | "Farm";
+  latitude: number;
+  longitude: number;
+  contact: {
+    locationLink?: string;
+    phoneNumber?: string;
+  };
+  detail: {
+    about?: string;
+    growing?: string[];
+  };
+  photos?: string[];
+  profileUrl?: string;
+  owner: {
+    uuid: string;
+  };
+  status: "active" | "inactive";
+  visibility: {
+    isVisible: boolean;
+  };
+  createdAt: string;
+  moderation?: {
+    status?: "clean" | "warned";
+    warnedAt?: number;
+    warnedBy?: string;
+    message?: string;
+    resolvedAt?: number;
+  };
+}

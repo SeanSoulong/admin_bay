@@ -5,16 +5,20 @@ import {
   remove,
   update,
   push,
+  onValue,
   set,
 } from "firebase/database";
 import { getFirebaseApp } from "./config";
-import { Product, Review, LearningCard, User } from "../../types";
+import { Product, Review, LearningCard, User, Location } from "../../types";
 
 export const dbPaths = {
   marketplace: "shoppingItems",
   reviews: "reviews",
   users: "users",
   learningHub: "learning_hub",
+  posts: "postCardItems",
+  notifications: "notifications",
+  locations: "locations",
 };
 
 // Get database instance
@@ -573,6 +577,405 @@ export const databaseService = {
       });
     });
   },
+
+  // Community
+  async getPosts(): Promise<any[]> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const postsRef = ref(db, dbPaths.posts);
+      const snapshot = await get(postsRef);
+
+      if (!snapshot.exists()) return [];
+
+      const postsData = snapshot.val();
+
+      return Object.keys(postsData)
+        .map((key) => {
+          const post = postsData[key];
+
+          return {
+            id: key,
+            ...post,
+            likesCount: Object.keys(post.likedBy || {}).length,
+            savesCount: Object.keys(post.savedBy || {}).length,
+            commentsCount: Object.keys(post.comments || {}).length,
+          };
+        })
+        .sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+    });
+  },
+
+  subscribePosts(callback: (posts: any[]) => void): () => void {
+    const db = getDatabaseInstance();
+
+    const postsRef = ref(db, dbPaths.posts);
+    const usersRef = ref(db, dbPaths.users);
+
+    let usersData: any = {};
+    let postsData: any = null;
+
+    const emit = () => {
+      if (!postsData) {
+        callback([]);
+        return;
+      }
+
+      const posts = Object.keys(postsData).map((key) => {
+        const post = postsData[key];
+        const user = usersData[post.userId] || {};
+
+        return {
+          id: key,
+          ...post,
+          username:
+            user.first_name || user.last_name
+              ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
+              : "Unknown User",
+          avatar: user.profileImageUrl,
+          likesCount: Object.keys(post.likedBy || {}).length,
+          savesCount: Object.keys(post.savedBy || {}).length,
+          commentsCount: Object.keys(post.comments || {}).length,
+        };
+      });
+
+      posts.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+      callback(posts);
+    };
+
+    const unsubUsers = onValue(usersRef, (userSnap) => {
+      usersData = userSnap.val() || {};
+      if (postsData) emit();
+    });
+
+    const unsubPosts = onValue(postsRef, (snapshot) => {
+      postsData = snapshot.val();
+      emit();
+    });
+
+    return () => {
+      unsubUsers();
+      unsubPosts();
+    };
+  },
+
+  async deletePost(postId: string): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const postRef = ref(db, `${dbPaths.posts}/${postId}`);
+      await remove(postRef);
+    });
+  },
+
+  async hidePost(postId: string): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const postRef = ref(db, `${dbPaths.posts}/${postId}`);
+
+      await update(postRef, {
+        visibility: "hidden",
+        updatedAt: Date.now(),
+      });
+    });
+  },
+
+  async unhidePost(postId: string): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const postRef = ref(db, `${dbPaths.posts}/${postId}`);
+
+      await update(postRef, {
+        visibility: "visible",
+        updatedAt: Date.now(),
+      });
+    });
+  },
+
+  async updatePost(postId: string, data: Partial<any>): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const postRef = ref(db, `${dbPaths.posts}/${postId}`);
+      await update(postRef, { ...data, updatedAt: Date.now() });
+    });
+  },
+
+  async warnPost(
+    postId: string,
+    payload: { adminId: string; message: string }
+  ): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const now = Date.now();
+
+      const postRef = ref(db, `${dbPaths.posts}/${postId}`);
+      const snap = await get(postRef);
+      if (!snap.exists()) throw new Error("Post not found");
+
+      const postData = snap.val();
+
+      await update(postRef, {
+        moderation: {
+          status: "warned",
+          warnedAt: now,
+          warnedBy: payload.adminId,
+          message: payload.message,
+        },
+        visibility: "hidden",
+        updatedAt: now,
+      });
+
+      if (postData.userId) {
+        await this.sendNotification(postData.userId, {
+          title: "ការព្រមានលើការបង្ហោះ",
+          body: payload.message,
+          type: "warning",
+          sender: payload.adminId,
+        });
+      }
+    });
+  },
+
+  async sendNotification(
+    receiverId: string,
+    data: { title: string; body: string; type: string; sender: string }
+  ): Promise<void> {
+    const db = getDatabaseInstance();
+    const notificationsRef = ref(db, `${dbPaths.notifications}/${receiverId}`);
+    const newNotifRef = push(notificationsRef);
+
+    await set(newNotifRef, {
+      title: data.title,
+      body: data.body,
+      type: data.type,
+      sender: data.sender,
+      receiverId: receiverId,
+      isRead: false,
+      isSent: false,
+      createdAt: Date.now(),
+    });
+  },
+
+  async broadcastNotification(
+    data: { title: string; body: string; type: string; sender: string },
+    userIds: string[]
+  ): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const updates: Record<string, any> = {};
+      const now = Date.now();
+
+      for (const userId of userIds) {
+        const newNotifRef = push(ref(db, `${dbPaths.notifications}/${userId}`));
+        updates[`${dbPaths.notifications}/${userId}/${newNotifRef.key}`] = {
+          title: data.title,
+          body: data.body,
+          type: data.type,
+          sender: data.sender,
+          receiverId: userId,
+          isRead: false,
+          isSent: false,
+          createdAt: now,
+        };
+      }
+
+      await update(ref(db), updates);
+    });
+  },
+
+  // Comments
+  subscribeComments(postId: string, callback: (comments: any[]) => void): () => void {
+    const db = getDatabaseInstance();
+
+    const commentsRef = ref(db, `${dbPaths.posts}/${postId}/comments`);
+    const usersRef = ref(db, dbPaths.users);
+
+    let usersData: any = {};
+    let commentsData: any = null;
+
+    const emit = () => {
+      if (!commentsData) {
+        callback([]);
+        return;
+      }
+
+      const comments = Object.keys(commentsData).map((key) => {
+        const comment = commentsData[key];
+        const user = usersData[comment.userId] || {};
+
+        const name = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+
+        return {
+          id: key,
+          ...comment,
+          username: name || "Unknown",
+          avatar: user.profileImageUrl || "",
+        };
+      });
+
+      comments.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+      callback(comments);
+    };
+
+    const unsubUsers = onValue(usersRef, (userSnap) => {
+      usersData = userSnap.val() || {};
+      if (commentsData) emit();
+    });
+
+    const unsubComments = onValue(commentsRef, (snapshot) => {
+      commentsData = snapshot.val();
+      emit();
+    });
+
+    return () => {
+      unsubUsers();
+      unsubComments();
+    };
+  },
+
+  // Locations
+  subscribeLocations(callback: (locations: Location[]) => void): () => void {
+    const db = getDatabaseInstance();
+    const locationsRef = ref(db, dbPaths.locations);
+
+    const unsub = onValue(locationsRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        callback([]);
+        return;
+      }
+
+      const data = snapshot.val();
+      const locations = Object.keys(data).map((key) => ({
+        id: key,
+        ...data[key],
+      }));
+
+      locations.sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() -
+          new Date(a.createdAt || 0).getTime()
+      );
+      callback(locations);
+    });
+
+    return unsub;
+  },
+
+  async getLocationById(id: string): Promise<Location | null> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const locationRef = ref(db, `${dbPaths.locations}/${id}`);
+      const snapshot = await get(locationRef);
+
+      if (!snapshot.exists()) return null;
+      return { id, ...snapshot.val() };
+    });
+  },
+
+  async updateLocation(id: string, data: Partial<Location>): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const locationRef = ref(db, `${dbPaths.locations}/${id}`);
+      const snapshot = await get(locationRef);
+
+      if (!snapshot.exists()) {
+        throw new Error(`Location with ID ${id} not found`);
+      }
+
+      await update(locationRef, { ...data });
+    });
+  },
+
+  async deleteLocation(id: string): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const locationRef = ref(db, `${dbPaths.locations}/${id}`);
+      await remove(locationRef);
+    });
+  },
+
+  async updateLocationStatus(
+    id: string,
+    status: "active" | "inactive"
+  ): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const locationRef = ref(db, `${dbPaths.locations}/${id}`);
+      await update(locationRef, { status });
+    });
+  },
+
+  async updateLocationVisibility(
+    id: string,
+    isVisible: boolean
+  ): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const locationRef = ref(db, `${dbPaths.locations}/${id}`);
+      await update(locationRef, { visibility: { isVisible } });
+    });
+  },
+
+  async warnLocation(
+    id: string,
+    payload: { adminId: string; message: string }
+  ): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const now = Date.now();
+      const locationRef = ref(db, `${dbPaths.locations}/${id}`);
+      const snap = await get(locationRef);
+      if (!snap.exists()) throw new Error("Location not found");
+
+      const locData = snap.val();
+      await update(locationRef, {
+        moderation: {
+          status: "warned",
+          warnedAt: now,
+          warnedBy: payload.adminId,
+          message: payload.message,
+        },
+        visibility: { isVisible: false },
+      });
+
+      if (locData.owner?.uuid) {
+        await this.sendNotification(locData.owner.uuid, {
+          title: "ការព្រមានលើទីតាំង",
+          body: payload.message,
+          type: "warning",
+          sender: payload.adminId,
+        });
+      }
+    });
+  },
+
+  async clearLocationWarning(id: string): Promise<void> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const locationRef = ref(db, `${dbPaths.locations}/${id}`);
+      await update(locationRef, {
+        moderation: { status: "clean", resolvedAt: Date.now() },
+        visibility: { isVisible: true },
+      });
+    });
+  },
+
+  async createLocation(data: any): Promise<string> {
+    return withRetry(async () => {
+      const db = getDatabaseInstance();
+      const locationsRef = ref(db, dbPaths.locations);
+      const newRef = push(locationsRef);
+
+      const locationData = {
+        ...data,
+        createdAt: new Date().toISOString(),
+        status: "active",
+        visibility: { isVisible: true },
+      };
+
+      await set(newRef, locationData);
+      return newRef.key!;
+    });
+  },
+
 };
 
 // Backward compatibility
