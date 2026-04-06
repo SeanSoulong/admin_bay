@@ -12,6 +12,9 @@ import LearningHubTable from "./LearningHubTable";
 import AdminUsersTable from "./AdminUsersTable";
 import { DashboardPageProps, Product, Review, User } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
+import AdminCommunity from "./AdminCommunity";
+import AdminFarmMap from "./AdminFarmMap";
+import AdminPushNotification from "./AdminPushNotification";
 
 export default function AdminDashboardClient({
   initialProducts,
@@ -24,7 +27,7 @@ export default function AdminDashboardClient({
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "products" | "reviews" | "learninghub" | "Map" | "Comunity" | "users"
+    "products" | "reviews" | "learninghub" | "Map" | "Comunity" | "users" | "notifications"
   >("products");
 
   // Initialize state with server-side data
@@ -287,7 +290,7 @@ export default function AdminDashboardClient({
         className="bg-gray-100 shadow sticky top-0 z-30"
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-16 relative">
             <div className="flex items-center">
               <div className="flex items-center space-x-2">
                 <img
@@ -332,83 +335,94 @@ export default function AdminDashboardClient({
                   )}
                 </svg>
               </motion.button>
-
-              {/* Desktop Navigation */}
-              <nav className="hidden rounded-3xl border border-gray-200 bg-gray-50 p-1.5 md:ml-6 lg:ml-10 xl:ml-40 md:flex md:space-x-1 lg:space-x-2">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveTab("products")}
-                  className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeTab === "products"
-                      ? "bg-blue-100 text-blue-700"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }`}
-                >
-                  Products
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveTab("reviews")}
-                  className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeTab === "reviews"
-                      ? "bg-red-100 text-red-700"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }`}
-                >
-                  Reviews
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveTab("learninghub")}
-                  className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeTab === "learninghub"
-                      ? "bg-[#CCFFFF] text-[#0A817F]"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }`}
-                >
-                  Learning Hub
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveTab("users")}
-                  className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeTab === "users"
-                      ? "bg-purple-100 text-purple-700"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }`}
-                >
-                  Users
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveTab("Map")}
-                  className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeTab === "Map"
-                      ? "bg-[#CCFFFF] text-[#0A817F]"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }`}
-                >
-                  Map
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setActiveTab("Comunity")}
-                  className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeTab === "Comunity"
-                      ? "bg-[#CCFFFF] text-[#0A817F]"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }`}
-                >
-                  Community
-                </motion.button>
-              </nav>
             </div>
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex fixed bottom-5 left-1/2 transform -translate-x-1/2 z-10 rounded-3xl border border-gray-200 bg-gray-50 p-1.5 shadow-lg">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab("products")}
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "products"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Products
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab("reviews")}
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "reviews"
+                    ? "bg-red-100 text-red-700"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Reviews
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab("learninghub")}
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "learninghub"
+                    ? "bg-[#CCFFFF] text-[#0A817F]"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Learning Hub
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab("users")}
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "users"
+                    ? "bg-purple-100 text-purple-700"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Users
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab("notifications")}
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "notifications"
+                    ? "bg-amber-100 text-amber-700"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Notifications
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab("Map")}
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "Map"
+                    ? "bg-[#CCFFFF] text-[#0A817F]"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Map
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab("Comunity")}
+                className={`px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-3xl text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "Comunity"
+                    ? "bg-[#CCFFFF] text-[#0A817F]"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                Community
+              </motion.button>
+            </nav>
             <div className="flex items-center space-x-2 md:space-x-3 lg:space-x-4">
               <div className="hidden text-[11px] sm:text-[12px] text-gray-600 md:block">
                 <span className="font-medium truncate max-w-30 md:max-w-37.5 lg:max-w-45">
@@ -456,6 +470,7 @@ export default function AdminDashboardClient({
                       { key: "reviews", label: "Reviews" },
                       { key: "learninghub", label: "Learning Hub" },
                       { key: "users", label: "Users" },
+                      { key: "notifications", label: "Notifications" },
                       { key: "Map", label: "Map" },
                       { key: "Comunity", label: "Community", colSpan: 2 },
                     ].map((item) => (
@@ -473,6 +488,8 @@ export default function AdminDashboardClient({
                               ? "bg-blue-100 text-blue-700"
                               : item.key === "reviews"
                               ? "bg-red-100 text-red-700"
+                              : item.key === "notifications"
+                              ? "bg-amber-100 text-amber-700"
                               : item.key === "users"
                               ? "bg-purple-100 text-purple-700"
                               : "bg-[#CCFFFF] text-[#0A817F]"
@@ -504,7 +521,9 @@ export default function AdminDashboardClient({
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 mt-4 sm:mt-5 md:mt-6"
+        className={`max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 mt-4 sm:mt-5 md:mt-6 ${
+          activeTab === "Map" || activeTab === "notifications" || activeTab === "Comunity" ? "hidden" : ""
+        }`}
       >
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
           {[
@@ -623,7 +642,7 @@ export default function AdminDashboardClient({
       </motion.div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 py-4 sm:py-5 md:py-6 lg:py-8">
+      <main className={activeTab === "Map" ? "relative" : "relative max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 py-4 sm:py-5 md:py-6 lg:py-8"}>
         <AnimatePresence mode="wait">
           {error && (
             <motion.div
@@ -693,14 +712,11 @@ export default function AdminDashboardClient({
                 adminId={user?.uid || ""}
               />
             ) : activeTab === "Map" ? (
-              <div className="bg-white shadow rounded-lg p-4 md:p-6">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 mb-4">
-                  Map Management
-                </h2>
-                <p className="text-gray-600">
-                  Map management content coming soon...
-                </p>
-              </div>
+              <AdminFarmMap />
+            ) : activeTab === "Comunity" ? (
+              <AdminCommunity />
+            ) : activeTab === "notifications" ? (
+              <AdminPushNotification users={users} adminId={user?.uid || ""} />
             ) : (
               <div className="bg-white shadow rounded-lg p-4 md:p-6">
                 <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 mb-4">
