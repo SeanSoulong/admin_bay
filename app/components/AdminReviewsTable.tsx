@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Review, Product } from "../types";
 import { getDatabase, ref, get } from "firebase/database";
 import { motion, AnimatePresence } from "framer-motion";
-import ReviewDetailModal from "./ReviewDetailModal";
+import ReviewDetailModal from "./reviews/ReviewDetailModal";
 //test
 interface AdminReviewsTableProps {
   reviews: Review[];

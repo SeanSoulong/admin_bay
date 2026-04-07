@@ -8,12 +8,13 @@ let geocoderInstance: google.maps.Geocoder | null = null;
 export function getGeocodedAddress(lat: number, lng: number): Promise<string> {
   const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
   if (addressCache[key]) return Promise.resolve(addressCache[key]);
-  if (!window.google?.maps?.Geocoder) return Promise.resolve(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-  
+  if (!window.google?.maps?.Geocoder)
+    return Promise.resolve(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+
   if (!geocoderInstance) {
     geocoderInstance = new window.google.maps.Geocoder();
   }
-  
+
   return new Promise((resolve) => {
     geocoderInstance!.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === "OK" && results && results[0]) {
@@ -28,7 +29,15 @@ export function getGeocodedAddress(lat: number, lng: number): Promise<string> {
   });
 }
 
-export function AddressDisplay({ lat, lng, className = "" }: { lat?: number | null; lng?: number | null; className?: string }) {
+export function AddressDisplay({
+  lat,
+  lng,
+  className = "",
+}: {
+  lat?: number | null;
+  lng?: number | null;
+  className?: string;
+}) {
   const [address, setAddress] = useState<string>("កំពុងស្វែងរកអាសយដ្ឋាន...");
 
   useEffect(() => {
@@ -40,8 +49,14 @@ export function AddressDisplay({ lat, lng, className = "" }: { lat?: number | nu
     getGeocodedAddress(lat, lng).then((addr) => {
       if (mounted) setAddress(addr);
     });
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [lat, lng]);
 
-  return <span className={className} title={address}>{address}</span>;
+  return (
+    <span className={className} title={address}>
+      {address}
+    </span>
+  );
 }

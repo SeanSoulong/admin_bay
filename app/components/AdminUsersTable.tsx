@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { User } from "../types";
-import UserDetailModal from "./UserDetailModal";
-import UserWarningModal from "./UserWarningModal";
+import UserDetailModal from "./user/UserDetailModal";
+import UserWarningModal from "./user/UserWarningModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestoreService, getDatabaseInstance } from "../lib/firebase";
 import { ref, onValue } from "firebase/database";
@@ -1162,30 +1162,317 @@ export default function AdminUsersTable({
             </div>
 
             {/* Pagination */}
+            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-4 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Page {currentPage} of {totalPages}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="px-4 py-4 border-t border-gray-200"
+              >
+                {/* Mobile pagination */}
+                <div className="sm:hidden flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex space-x-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.max(1, currentPage - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Previous page"
+                    >
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      <span className="sr-only sm:not-sr-only">Prev</span>
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.min(totalPages, currentPage + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Next page"
+                    >
+                      <span className="sr-only sm:not-sr-only">Next</span>
+                      <svg
+                        className="w-4 h-4 ml-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+                  </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Next
-                  </button>
+
+                {/* Desktop pagination */}
+                <div className="hidden sm:flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                  <div className="text-sm text-gray-700">
+                    Showing{" "}
+                    <span className="font-medium">
+                      {(currentPage - 1) * itemsPerPage + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-medium">
+                      {Math.min(
+                        currentPage * itemsPerPage,
+                        filteredAndSortedUsers.length
+                      )}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-medium">
+                      {filteredAndSortedUsers.length}
+                    </span>{" "}
+                    users
+                  </div>
+
+                  <div className="flex items-center space-x-1 lg:space-x-2">
+                    {/* First Page Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="text-gray-700 px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
+                      title="First Page"
+                      aria-label="Go to first page"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                        />
+                      </svg>
+                    </motion.button>
+
+                    {/* Previous Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.max(1, currentPage - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Previous page"
+                    >
+                      <svg
+                        className="text-gray-700 w-4 h-4 mr-1 hidden sm:inline"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                      <span className="sm:inline text-gray-700">Previous</span>
+                    </motion.button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {/* Show first page and ellipsis if needed */}
+                      {currentPage > 3 && totalPages > 5 && (
+                        <>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setCurrentPage(1)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 min-w-[2.5rem]"
+                          >
+                            1
+                          </motion.button>
+                          {currentPage > 4 && (
+                            <span className="px-2 text-gray-500">...</span>
+                          )}
+                        </>
+                      )}
+
+                      {/* Show surrounding pages */}
+                      {(() => {
+                        const pages = [];
+                        const maxVisible = 5;
+                        let startPage = Math.max(
+                          1,
+                          currentPage - Math.floor(maxVisible / 2)
+                        );
+                        const endPage = Math.min(
+                          totalPages,
+                          startPage + maxVisible - 1
+                        );
+
+                        // Adjust start page if we're near the end
+                        if (endPage - startPage + 1 < maxVisible) {
+                          startPage = Math.max(1, endPage - maxVisible + 1);
+                        }
+
+                        for (
+                          let pageNum = startPage;
+                          pageNum <= endPage;
+                          pageNum++
+                        ) {
+                          pages.push(
+                            <motion.button
+                              key={pageNum}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`px-3 py-1.5 text-sm border rounded-md min-w-[2.5rem] ${
+                                currentPage === pageNum
+                                  ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                                  : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                              }`}
+                              aria-label={`Go to page ${pageNum}`}
+                              aria-current={
+                                currentPage === pageNum ? "page" : undefined
+                              }
+                            >
+                              {pageNum}
+                            </motion.button>
+                          );
+                        }
+                        return pages;
+                      })()}
+
+                      {/* Show last page and ellipsis if needed */}
+                      {currentPage < totalPages - 2 && totalPages > 5 && (
+                        <>
+                          {currentPage < totalPages - 3 && (
+                            <span className="px-2 text-gray-500">...</span>
+                          )}
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 min-w-[2.5rem]"
+                          >
+                            {totalPages}
+                          </motion.button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Next Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() =>
+                        setCurrentPage(Math.min(totalPages, currentPage + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
+                      aria-label="Next page"
+                    >
+                      <span className="sm:inline text-gray-700">Next</span>
+                      <svg
+                        className="text-gray-700 w-4 h-4 ml-1 hidden sm:inline"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+
+                    {/* Last Page Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="text-gray-700 px-2.5 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hidden lg:inline-flex items-center"
+                      title="Last Page"
+                      aria-label="Go to last page"
+                    >
+                      <svg
+                        className="text-gray-700 w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                        />
+                      </svg>
+                    </motion.button>
+                  </div>
                 </div>
-              </div>
+
+                {/* Mobile page indicator dots */}
+                <div className="sm:hidden flex justify-center mt-3">
+                  <div className="flex space-x-1">
+                    {(() => {
+                      const maxDots = Math.min(5, totalPages);
+                      const dots = [];
+                      let startDot = 1;
+                      if (currentPage > 3) {
+                        startDot = currentPage - 1;
+                      }
+                      if (startDot + maxDots - 1 > totalPages) {
+                        startDot = totalPages - maxDots + 1;
+                      }
+                      for (let i = 0; i < maxDots; i++) {
+                        const pageNum = startDot + i;
+                        if (pageNum > totalPages) break;
+                        dots.push(
+                          <motion.div
+                            key={pageNum}
+                            className={`w-2 h-2 rounded-full transition-colors ${
+                              currentPage === pageNum
+                                ? "bg-blue-600"
+                                : "bg-gray-300"
+                            }`}
+                            animate={{
+                              scale: currentPage === pageNum ? 1.2 : 1,
+                            }}
+                            aria-hidden="true"
+                          />
+                        );
+                      }
+                      return dots;
+                    })()}
+                  </div>
+                </div>
+              </motion.div>
             )}
           </>
         )}

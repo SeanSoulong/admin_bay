@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LearningCard } from "../types";
-import LearningCardEditModal from "./LearningCardEditModal";
+import LearningCardEditModal from "./learninghub/LearningCardEditModal";
 import { motion } from "framer-motion";
 
 interface LearningHubTableProps {

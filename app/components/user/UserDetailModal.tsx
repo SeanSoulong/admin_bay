@@ -22,7 +22,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { User as UserType } from "../types";
+import { User as UserType } from "../../types";
 
 interface UserDetailModalProps {
   user: UserType;

@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { adminSignOut, firestoreService } from "../lib/firebase";
 import AdminProductsTable from "./AdminProductsTable";
 import AdminReviewsTable from "./AdminReviewsTable";
-import LearningHubTable from "./LearningHubTable";
+import LearningHubTable from "./AdminLearningHubTable";
 import AdminUsersTable from "./AdminUsersTable";
 import { DashboardPageProps, Product, Review, User } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,7 +27,13 @@ export default function AdminDashboardClient({
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<
-    "products" | "reviews" | "learninghub" | "Map" | "Comunity" | "users" | "notifications"
+    | "products"
+    | "reviews"
+    | "learninghub"
+    | "Map"
+    | "Comunity"
+    | "users"
+    | "notifications"
   >("products");
 
   // Initialize state with server-side data
@@ -522,7 +528,11 @@ export default function AdminDashboardClient({
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
         className={`max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 mt-4 sm:mt-5 md:mt-6 ${
-          activeTab === "Map" || activeTab === "notifications" || activeTab === "Comunity" ? "hidden" : ""
+          activeTab === "Map" ||
+          activeTab === "notifications" ||
+          activeTab === "Comunity"
+            ? "hidden"
+            : ""
         }`}
       >
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
@@ -642,7 +652,13 @@ export default function AdminDashboardClient({
       </motion.div>
 
       {/* Main Content */}
-      <main className={activeTab === "Map" ? "relative" : "relative max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 py-4 sm:py-5 md:py-6 lg:py-8"}>
+      <main
+        className={
+          activeTab === "Map"
+            ? "relative"
+            : "relative max-w-7xl mx-auto px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 py-4 sm:py-5 md:py-6 lg:py-8"
+        }
+      >
         <AnimatePresence mode="wait">
           {error && (
             <motion.div
