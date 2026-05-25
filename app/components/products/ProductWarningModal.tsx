@@ -11,15 +11,15 @@ interface ProductWarningModalProps {
   onClose: () => void;
   onSendWarning: (productId: string, reason: string) => Promise<void>;
 
-  // ✅ NEW
+  //NEW
   initialReason?: string;
   mode?: "warn" | "edit";
 
-  // ✅ NEW: delete warning feature
+  // delete warning feature
   onDeleteWarning?: (productId: string) => Promise<void>;
   canDeleteWarning?: boolean;
 
-  // ✅ NEW: allow parent to disable UI while saving/deleting
+  //  allow parent to disable UI while saving/deleting
   isBusy?: boolean;
 }
 
