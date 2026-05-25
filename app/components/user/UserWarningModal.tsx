@@ -12,8 +12,10 @@ import {
   Ban,
   CheckCircle,
   User as UserIcon,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
-import { User } from "../types";
+import { User } from "../../types";
 
 interface UserWarningModalProps {
   user: User & { action?: "warn" | "suspend" | "ban" | "reinstate" };
@@ -32,6 +34,24 @@ interface UserWarningModalProps {
 
 type ActionType = "warn" | "suspend" | "ban" | "reinstate";
 
+// Helper function for online status (same as in UserTable)
+const getOnlineStatusIndicator = (online?: boolean) => {
+  if (online) {
+    return {
+      icon: Wifi,
+      color: "text-green-500",
+      bgColor: "bg-green-100",
+      text: "Online",
+    };
+  }
+  return {
+    icon: WifiOff,
+    color: "text-gray-400",
+    bgColor: "bg-gray-100",
+    text: "Offline",
+  };
+};
+
 export default function UserWarningModal({
   user,
   isOpen,
@@ -47,6 +67,18 @@ export default function UserWarningModal({
   const [suspendDays, setSuspendDays] = useState(7);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalStyle = window.getComputedStyle(document.body).overflow;
+      document.body.style.overflow = "hidden";
+
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -134,6 +166,10 @@ export default function UserWarningModal({
 
   const ActionIcon = getActionIcon();
   const color = getActionColor();
+
+  // Get online status for display
+  const onlineStatus = getOnlineStatusIndicator(user.online);
+  const OnlineIcon = onlineStatus.icon;
 
   return (
     <AnimatePresence>
@@ -234,7 +270,7 @@ export default function UserWarningModal({
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6">
-                  {/* User Info */}
+                  {/* User Info - Enhanced with online status like UserTable */}
                   <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="shrink-0">
@@ -250,18 +286,29 @@ export default function UserWarningModal({
                             }}
                           />
                         ) : (
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <UserIcon className="h-5 w-5 text-gray-500" />
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <UserIcon className="h-5 w-5 text-gray-400" />
                           </div>
                         )}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          {user.first_name} {user.last_name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {user.email} • {user.role || "User"}
-                        </p>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {user.first_name} {user.last_name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {user.email} • {user.role || "User"}
+                            </p>
+                          </div>
+                          {/* Online Status Badge - Same as UserTable */}
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${onlineStatus.bgColor} ${onlineStatus.color}`}
+                          >
+                            <OnlineIcon className="h-3 w-3 mr-1" />
+                            {onlineStatus.text}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -278,7 +325,7 @@ export default function UserWarningModal({
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         placeholder={`Explain why this user is being ${action}ed...`}
-                        className="w-full rounded-lg border border-[#D1D5DB] bg-white px-4 py-3 text-[13px] sm:text-[14px] transition focus:border-[#0A817F] focus:ring-2 focus:ring-[#0A817F]/20 disabled:opacity-50 resize-none"
+                        className="w-full rounded-lg text-gray-600  border border-[#D1D5DB] bg-white px-4 py-3 text-[13px] sm:text-[14px] transition focus:border-[#0A817F] focus:ring-2 focus:ring-[#0A817F]/20 disabled:opacity-50 resize-none"
                         rows={4}
                         disabled={busy}
                         required
@@ -295,7 +342,7 @@ export default function UserWarningModal({
                       <select
                         value={suspendDays}
                         onChange={(e) => setSuspendDays(Number(e.target.value))}
-                        className="w-full rounded-lg border border-[#D1D5DB] bg-white px-4 py-3 text-sm transition focus:border-[#0A817F] focus:ring-2 focus:ring-[#0A817F]/20"
+                        className="w-full rounded-lg border text-gray-600 border-[#D1D5DB] bg-white px-4 py-3 text-sm transition focus:border-[#0A817F] focus:ring-2 focus:ring-[#0A817F]/20"
                         disabled={busy}
                       >
                         <option value={1}>1 day</option>
@@ -312,7 +359,8 @@ export default function UserWarningModal({
                     <div className="mb-6 p-3 bg-yellow-50 rounded-lg">
                       <p className="text-xs text-yellow-800">
                         <span className="font-medium">Note:</span> The user will
-                        be warned. Multiple warnings may lead to suspension.
+                        receive a warning. Multiple warnings may lead to
+                        suspension.
                       </p>
                     </div>
                   )}

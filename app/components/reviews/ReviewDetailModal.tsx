@@ -11,7 +11,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import { Review, Product } from "../types";
+import { Review, Product } from "../../types";
 import { getDatabase, ref, get } from "firebase/database";
 
 interface ReviewDetailModalProps {

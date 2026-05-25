@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, Upload, Loader2 } from "lucide-react";
-import { LearningCard } from "../types";
-import { uploadImage } from "../lib/storage";
+import { LearningCard } from "../../types";
+import { uploadImage } from "../../lib/storage";
 
 interface LearningCardEditModalProps {
   card?: LearningCard;

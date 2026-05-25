@@ -14,7 +14,7 @@ import {
   Maximize2,
   Minimize2,
 } from "lucide-react";
-import { Product } from "../types";
+import { Product } from "../../types";
 import { getDatabase, ref, get } from "firebase/database";
 
 interface ProductDetailModalProps {

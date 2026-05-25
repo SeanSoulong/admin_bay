@@ -5,8 +5,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, Trash2, XCircle, Save, Loader2 } from "lucide-react";
-import { Product } from "../types";
-import { storage } from "../lib/firebase";
+import { Product } from "../../types";
+import { storage } from "../../lib/firebase";
 import {
   ref,
   uploadBytesResumable,
